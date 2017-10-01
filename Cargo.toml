@@ -1,0 +1,6 @@
+[package]
+name = "revisa"
+version = "0.1.0"
+authors = ["Ted Campbell <dev@tynopex.net>"]
+
+[dependencies]
