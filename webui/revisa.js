@@ -120,21 +120,16 @@ class RemoteConsole {
     }
 
     connect() {
-        this.write_scrollback("[RemoteConsole] Connecting to DummyRemote ...");
+        this.write_scrollback("[RemoteConsole] Connecting to Remote ...");
 
         this.remote = new DummyRemote();
-        this.remote.connect((msgs) => this.write_scrollback_multi(msgs));
+        this.remote.command('hello', (msgs) => this.write_scrollback_multi(msgs));
     }
 }
 
 
 // Dummy remote running on client
 class DummyRemote {
-    connect(cb) {
-        let result = ["[DummyRemote] Connected!"];
-        cb(result);
-    }
-
     command(cmd, cb) {
         if (cmd == 'hello') {
             let result = ["[DummyRemote] Hello!"];
