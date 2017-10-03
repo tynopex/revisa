@@ -122,7 +122,7 @@ class RemoteConsole {
     connect() {
         this.write_scrollback("[RemoteConsole] Connecting to Remote ...");
 
-        this.remote = new DummyRemote();
+        this.remote = new RevisaRemote();
         this.remote.command('hello', (msgs) => this.write_scrollback_multi(msgs));
     }
 }
@@ -138,6 +138,41 @@ class DummyRemote {
             let result = ["[DummyRemote] Unknown command: `" + cmd + "`"];
             cb(result);
         }
+    }
+}
+
+
+// Remote connection to REVISA server
+class RevisaRemote {
+    command(cmd, cb) {
+        let req = new XMLHttpRequest();
+        req.open('POST', "http://localhost:8080/cmd");
+        req.timeout = 2000;
+        req.responseType = "json";
+        req.onload = (() => this.onload(req, cb));
+        req.onerror = (() => this.onerror(req, cb));
+        req.ontimeout = (() => this.ontimeout(req, cb));
+        req.send(cmd);
+    }
+
+    onload(xhr, cb) {
+        if (xhr.response && 'result' in xhr.response) {
+            let output = ["[RevisaRemote] " + xhr.response['result']];
+            cb(output);
+        } else {
+            let result = ["[RevisaRemote] Bad response format!"];
+            cb(result);
+        }
+    }
+
+    onerror(xhr, cb) {
+        let result = ["[RevisaRemote] Error!"];
+        cb(result);
+    }
+
+    ontimeout(xhr, cb) {
+        let result = ["[RevisaRemote] Timed out!"];
+        cb(result);
     }
 }
 
