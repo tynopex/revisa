@@ -1,3 +1,12 @@
+extern crate futures;
+extern crate hyper;
+
+mod api;
+
+use api::WebUi;
+
 fn main() {
-    println!("Hello, world!");
+    let ui_serv = WebUi::new();
+
+    ui_serv.run();
 }

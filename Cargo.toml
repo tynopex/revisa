@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["Ted Campbell <dev@tynopex.net>"]
 
 [dependencies]
+futures = "0.1"
+hyper = "0.11"
