@@ -35,8 +35,14 @@ class ViewLayout {
     }
 
     render_breadcrumb() {
-        this.header.innerHTML = this.breadcrumb.join(" \u00BB ");
-        this.header.appendChild(document.createElement('hr'));
+        let docFrag = document.createDocumentFragment();
+        docFrag.append(this.breadcrumb[0]);
+        for (let i = 1; i < this.breadcrumb.length; i++)
+            docFrag.append(" \u00BB ", this.breadcrumb[i]);
+        docFrag.appendChild(document.createElement('hr'));
+
+        this.header.innerHTML = "";
+        this.header.appendChild(docFrag);
     }
 
     init_header() {
