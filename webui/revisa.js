@@ -10,6 +10,7 @@ class Revisa {
 
         this.landing = new LandingPage(this);
         this.console = new RemoteConsole(this);
+        this.minidump = new MinidumpViewer(this);
 
         let view = window.location.hash;
         this.select_view(view);
@@ -22,6 +23,9 @@ class Revisa {
             // Connect automatically
             if (!this.console.remote)
                 this.console.connect();
+        }
+        else if (view == "#minidump") {
+            this.view.minidump_view(this.minidump);
         }
         else {
             this.view.landing_view(this.landing);
@@ -100,6 +104,14 @@ class ViewLayout {
 
         console.bind(this.body);
     }
+
+    minidump_view(minidump) {
+        this.breadcrumb.length = 1;
+        this.breadcrumb.push("Minidump Viewer");
+        this.render_breadcrumb();
+
+        minidump.bind(this.body);
+    }
 }
 
 
@@ -116,6 +128,7 @@ class LandingPage {
 
         this.list = document.createElement('ul');
         this.add_item("Remote Console", "#console");
+        this.add_item("Minidump Viewer", "#minidump");
         this.dom.appendChild(this.list);
     }
 
