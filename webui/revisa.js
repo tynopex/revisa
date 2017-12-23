@@ -86,6 +86,9 @@ class RemoteConsole {
     }
 
     render() {
+        if (!this.text)
+            return;
+
         this.text.value = this.scrollback.join('\n');
         this.text.scrollTop = this.text.scrollHeight;
     }
