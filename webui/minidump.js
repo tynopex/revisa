@@ -45,6 +45,10 @@ class MinidumpViewer {
         this.body.innerHTML = "";
         this.body.append("Header Signature: " + result.magic);
         this.body.append(document.createElement('br'));
+        this.body.append("Byte Sum (WASM): " + result.wasm_sum);
+        this.body.append(document.createElement('br'));
+        this.body.append("Byte Sum: " + result.sum);
+        this.body.append(document.createElement('br'));
         this.body.append("Data Size: " + result.bytelen);
     }
 
