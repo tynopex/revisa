@@ -1,3 +1,13 @@
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
+
+use std::os::raw::c_char;
+use std::ffi::CString;
+
+
 // Boilerplate for WASM compiler
 fn main() { }
 
@@ -10,4 +20,11 @@ pub unsafe fn sum_bytes(raw: *const u8, size: u32) -> u8 {
 
 fn sum_bytes_impl(data: &[u8]) -> u8 {
     data.iter().sum()
+}
+
+
+// Use this to release JSON results from API calls
+#[no_mangle]
+pub unsafe fn release_json(raw: *mut c_char) {
+    drop(CString::from_raw(raw));
 }
