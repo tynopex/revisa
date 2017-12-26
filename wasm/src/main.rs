@@ -4,6 +4,8 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
+mod minidump;
+
 use std::os::raw::c_char;
 use std::ffi::CString;
 
@@ -27,4 +29,13 @@ fn sum_bytes_impl(data: &[u8]) -> u8 {
 #[no_mangle]
 pub unsafe fn release_json(raw: *mut c_char) {
     drop(CString::from_raw(raw));
+}
+
+
+// Extract MemoryInfo data from a minidump
+#[no_mangle]
+pub unsafe fn minidump_memory_info(raw: *const u8, size: u32) -> *mut c_char {
+    let data = std::slice::from_raw_parts(raw, size as usize);
+    let cstr = minidump::memory_info_json(data);
+    cstr.into_raw()
 }

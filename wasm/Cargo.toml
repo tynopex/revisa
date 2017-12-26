@@ -7,3 +7,4 @@ authors = ["Ted Campbell <dev@tynopex.net>"]
 serde = "*"
 serde_json = "*"
 serde_derive = "*"
+byteorder = "*"
