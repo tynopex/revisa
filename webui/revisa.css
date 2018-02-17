@@ -6,3 +6,28 @@
 #revisa .console input {
     width: 80%;
 }
+
+#revisa .minidump .meminfo {
+    width: 50%;
+    font-family: monospace;
+}
+
+#revisa .minidump .meminfo li.free {
+    background-color: grey;
+}
+
+#revisa .minidump .meminfo li.commit {
+    background-color: green;
+}
+
+#revisa .minidump .meminfo li.reserve {
+    background-color: lightgreen;
+}
+
+#revisa .minidump .meminfo li.unknown {
+    background-color: red;
+}
+
+#revisa .minidump .meminfo li.image {
+    font-weight: bold;
+}
