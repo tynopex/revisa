@@ -6,6 +6,7 @@ rustflags = [
     "--verbose",
     "-C", """link-args=\
              -s EXPORT_NAME='RevisaWasm' \
+             -s EXTRA_EXPORTED_RUNTIME_METHODS=['ccall','writeArrayToMemory','UTF8ToString'] \
              -s MODULARIZE=1 \
              -s NO_DYNAMIC_EXECUTION=1""",
     ]
