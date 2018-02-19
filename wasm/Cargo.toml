@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Ted Campbell <dev@tynopex.net>"]
 
 [dependencies]
+memalloc = "*"
 serde = "*"
 serde_json = "*"
 serde_derive = "*"

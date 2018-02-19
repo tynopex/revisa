@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
 
+extern crate memalloc;
 extern crate serde;
 extern crate serde_json;
 
@@ -12,6 +13,24 @@ use std::ffi::CString;
 
 // Boilerplate for WASM compiler
 fn main() { }
+
+
+// Memory allocation helpers
+#[no_mangle]
+pub unsafe fn alloc_buffer(size: u32) -> *mut u8 {
+    if size > 0 {
+        memalloc::allocate(size as usize)
+    } else {
+        std::ptr::null_mut()
+    }
+}
+
+#[no_mangle]
+pub unsafe fn free_buffer(ptr: *mut u8, size: u32) {
+    if size > 0 {
+        memalloc::deallocate(ptr, size as usize)
+    }
+}
 
 
 // Use this to release JSON results from API calls
