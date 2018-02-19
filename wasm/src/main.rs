@@ -39,3 +39,11 @@ pub unsafe fn minidump_memory_info(raw: *const u8, size: u32) -> *mut c_char {
     let cstr = minidump::memory_info_json(data);
     cstr.into_raw()
 }
+
+// Extract Module data from a minidump
+#[no_mangle]
+pub unsafe fn minidump_module(raw: *const u8, size: u32) -> *mut c_char {
+    let data = std::slice::from_raw_parts(raw, size as usize);
+    let cstr = minidump::module_json(data);
+    cstr.into_raw()
+}

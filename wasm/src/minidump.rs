@@ -60,6 +60,15 @@ pub struct MemoryInfo {
     pub Type: u32,
 }
 
+#[derive(Serialize)]
+pub struct Module {
+    pub BaseOfImage: u64,
+    pub SizeOfImage: u32,
+    pub CheckSum: u32,
+    pub TimeDateStamp: u32,
+    pub ModuleNameRva: u32,
+}
+
 pub type ParseData<'a> = &'a[u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
 
@@ -221,6 +230,64 @@ pub fn parse_memory_info<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     Ok((vec,data))
 }
 
+fn module(data: ParseData) -> ParseResult<Module> {
+    /* struct MINIDUMP_MODULE {
+        ULONG64                         BaseOfImage;
+        ULONG32                         SizeOfImage;
+        ULONG32                         CheckSum;
+        ULONG32                         TimeDateStamp;
+        RVA                             ModuleNameRva;
+        VS_FIXEDFILEINFO                VersionInfo;
+        MINIDUMP_LOCATION_DESCRIPTOR    CvRecord;
+        MINIDUMP_LOCATION_DESCRIPTOR    MiscRecord;
+        ULONG64                         Reserved0;
+        ULONG64                         Reserved1;
+    } */
+
+    let (raw,remain) = take(data, 108)?;
+
+    let module = Module {
+        BaseOfImage: LittleEndian::read_u64(&raw[0..8]),
+        SizeOfImage: LittleEndian::read_u32(&raw[8..12]),
+        CheckSum: LittleEndian::read_u32(&raw[12..16]),
+        TimeDateStamp: LittleEndian::read_u32(&raw[16..20]),
+        ModuleNameRva: LittleEndian::read_u32(&raw[20..24]),
+    };
+
+    Ok((module,remain))
+}
+
+pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> ParseResult<'a, Vec<Module>> {
+    /* struct MINIDUMP_MODULE_LIST {
+        ULONG32 NumberOfModules;
+    } */
+
+    let mut vec = Vec::new();
+
+    let rva = loc.Rva as usize;
+    if rva > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[rva..];
+
+    let SizeOfHeader = 4;   // Packed header size
+    let SizeOfEntry = 108;  // Packed MINIDUMP_MODULE size
+    let NumberOfModules = LittleEndian::read_u32(&raw[0..4]);
+
+    if SizeOfHeader + (SizeOfEntry * NumberOfModules as u32) != loc.DataSize {
+        return Err("Unexpected Stream size");
+    }
+
+    vec.reserve(NumberOfModules as usize);
+    for i in 0..NumberOfModules {
+        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
+        let (entry,_) = module(&raw[offset..])?;
+        vec.push(entry);
+    }
+
+    Ok((vec,data))
+}
+
 // Extract MemoryInfo from dump and return as JSON
 pub fn memory_info_json(dump: &[u8]) -> CString {
     let header = parse_header(&dump)
@@ -240,5 +307,27 @@ pub fn memory_info_json(dump: &[u8]) -> CString {
                  .unwrap();
 
     let serialized = serde_json::to_vec(&meminfo).expect("Serializing failed");
+    CString::new(serialized).expect("Bad serialization data")
+}
+
+// Extract Module from dump and return as JSON
+pub fn module_json(dump: &[u8]) -> CString {
+    let header = parse_header(&dump)
+                .map(|(h,_)| h)
+                .expect("Failed to parse minidump::Header");
+
+    let dir = parse_directory(&dump, &header)
+             .map(|(d,_)| d)
+             .expect("Failed to parse minidump Directory list");
+
+    let modulestream = dir.iter()
+                          .find(|&el| el.StreamType == StreamType::ModuleListStream as u32)
+                          .expect("Unable to find module list stream");
+
+    let modules = parse_module_list(&dump, &modulestream.Location)
+                 .map(|(v,_)| v)
+                 .unwrap();
+
+    let serialized = serde_json::to_vec(&modules).expect("Serializing failed");
     CString::new(serialized).expect("Bad serialization data")
 }
