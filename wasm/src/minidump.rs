@@ -67,6 +67,8 @@ pub struct Module {
     pub CheckSum: u32,
     pub TimeDateStamp: u32,
     pub ModuleNameRva: u32,
+
+    pub ModuleName: Option<String>,
 }
 
 pub type ParseData<'a> = &'a[u8];
@@ -252,9 +254,37 @@ fn module(data: ParseData) -> ParseResult<Module> {
         CheckSum: LittleEndian::read_u32(&raw[12..16]),
         TimeDateStamp: LittleEndian::read_u32(&raw[16..20]),
         ModuleNameRva: LittleEndian::read_u32(&raw[20..24]),
+
+        ModuleName: None,
     };
 
     Ok((module,remain))
+}
+
+pub fn parse_string<'a>(data: ParseData<'a>, rva_: u32) -> ParseResult<'a, String> {
+    /* struct MINIDUMP_STRING {
+        ULONG32 Length;
+        WCHAR   Buffer[];
+    } */
+
+    let rva = rva_ as usize;
+    if rva > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[rva..];
+
+    let Length = LittleEndian::read_u32(&raw[0..4]) / 2;
+
+    let mut elems = Vec::new();
+    for i in 0..Length {
+        let offset = (4 + i * 2) as usize;
+        let elem = LittleEndian::read_u16(&raw[offset..]);
+        elems.push(elem);
+    }
+    let string = String::from_utf16(&elems)
+                        .map_err(|_| "bad UTF-16 data")?;
+
+    Ok((string,data))
 }
 
 pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> ParseResult<'a, Vec<Module>> {
@@ -281,7 +311,14 @@ pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     vec.reserve(NumberOfModules as usize);
     for i in 0..NumberOfModules {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (entry,_) = module(&raw[offset..])?;
+        let (mut entry,_) = module(&raw[offset..])?;
+
+        // Look up name string
+        if entry.ModuleNameRva > 0 {
+            let (name,_) = parse_string(data, entry.ModuleNameRva)?;
+            entry.ModuleName = Some(name);
+        }
+
         vec.push(entry);
     }
 
