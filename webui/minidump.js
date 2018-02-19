@@ -41,7 +41,7 @@ class MinidumpViewer {
         reader.readAsArrayBuffer(file);
     }
 
-    render_memory(mem_info, dom) {
+    render_memory(mem_info, mod_info, dom) {
         // State Flags
         const MEM_COMMIT    = 0x00001000;
         const MEM_RESERVE   = 0x00002000;
@@ -51,6 +51,12 @@ class MinidumpViewer {
         const MEM_PRIVATE   = 0x00020000;
         const MEM_MAPPED    = 0x00040000;
         const MEM_IMAGE     = 0x01000000;
+
+        // Find filenames of mapped modules
+        let mem_names = {};
+        for (let item of mod_info) {
+            mem_names[item.BaseOfImage] = item.ModuleName;
+        }
 
         let list = document.createElement('ul');
         for (let item of mem_info) {
@@ -71,6 +77,12 @@ class MinidumpViewer {
             // Mark regions that are part of image
             if (item.Type & MEM_IMAGE) {
                 elem.className += " image";
+
+                // Add image filename
+                if (item.BaseAddress in mem_names) {
+                    elem.append('\u00A0');
+                    elem.append(mem_names[item.BaseAddress]);
+                }
             }
 
             list.appendChild(elem);
@@ -90,8 +102,9 @@ class MinidumpViewer {
 
         let mem_dom = document.createElement('div');
         mem_dom.className = "meminfo";
+        let mod_info = JSON.parse(result.module_info);
         let mem_info = JSON.parse(result.memory_info);
-        this.render_memory(mem_info, mem_dom);
+        this.render_memory(mem_info, mod_info, mem_dom);
         this.body.append(mem_dom);
     }
 

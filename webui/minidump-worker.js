@@ -77,10 +77,40 @@ class MinidumpProcessor {
         return json;
     }
 
+    wasm_module_info(data) {
+        // Copy data into WASM
+        let view = new Uint8Array(data);
+        let wasm_data = wasm._malloc(data.byteLength);
+        wasm.writeArrayToMemory(view, wasm_data);
+
+        // Run WASM
+        let raw = wasm.ccall('minidump_module',             // Function Name
+                             'number',                      // Return Type
+                             ['number', 'number'],          // Argument Types
+                             [wasm_data, data.byteLength]); // Arguments
+
+        // Release WASM buffer
+        wasm._free(wasm_data);
+        wasm_data = null;
+
+        // Extract JSON result
+        let json = wasm.UTF8ToString(raw);
+
+        // Release buffer
+        wasm.ccall('release_json',  // Function Name
+                   null,            // Return Type
+                   ['number'],      // Argument Types
+                   [raw]);          // Arguments
+        raw = null;
+
+        return json;
+    }
+
     process(data) {
         let magic = this.get_magic(data);
         let sum = this.sum_bytes(data);
         let wasm_sum = this.wasm_sum_bytes(data);
+        let module_info = this.wasm_module_info(data);
         let memory_info = this.wasm_memory_info(data);
 
         // Send response to caller
@@ -89,6 +119,7 @@ class MinidumpProcessor {
             'magic': magic,
             'sum': sum,
             'wasm_sum': wasm_sum,
+            'module_info': module_info,
             'memory_info': memory_info,
             'bytelen': data.byteLength,
         });
