@@ -3,6 +3,9 @@ name = "revisa-wasm"
 version = "0.1.0"
 authors = ["Ted Campbell <dev@tynopex.net>"]
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 memalloc = "*"
 serde = "*"

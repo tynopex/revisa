@@ -1,15 +1,16 @@
 #!/bin/sh
 
-#
-# NOTE: The emcc configuration is found in .cargo/config
-#
-
-SRC_DIR="target/wasm32-unknown-emscripten/release"
+SRC_DIR="target/wasm32-unknown-unknown/release"
 DST_DIR="../webui"
 
 # Release build
-cargo build --release
+cargo \
+    build \
+    --target wasm32-unknown-unknown \
+    --release
+
+# Strip dead code
+wasm-gc ${SRC_DIR}/revisa_wasm.wasm
 
 # Copy files to webui
-cp ${SRC_DIR}/revisa-wasm.js ${DST_DIR}
 cp ${SRC_DIR}/revisa_wasm.wasm ${DST_DIR}

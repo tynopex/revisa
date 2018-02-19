@@ -1,11 +1,25 @@
-self.importScripts('revisa-wasm.js');
-
 // Load WASM module
-let wasm = RevisaWasm();
+let wasm = null;
+fetch('revisa_wasm.wasm')
+    .then(response => response.arrayBuffer())
+    .then(bytes => WebAssembly.instantiate(bytes))
+    .then(({instance}) => wasm = instance);
 
 class MinidumpProcessor {
     constructor(responder) {
         this.responder = responder;
+    }
+
+    writeArrayToMemory(src, ptr) {
+        let dst = new Uint8Array(wasm.exports.memory.buffer);
+        dst.set(src, ptr);
+    }
+
+    UTF8ToString(ptr) {
+        let src = new Uint8Array(wasm.exports.memory.buffer, ptr);
+        let null_index = src.indexOf(0x00);
+        let dec = new TextDecoder('utf-8');
+        return dec.decode(src.subarray(0, null_index));
     }
 
     get_magic(data) {
@@ -22,27 +36,21 @@ class MinidumpProcessor {
     wasm_memory_info(data) {
         // Copy data into WASM
         let view = new Uint8Array(data);
-        let wasm_data = wasm._malloc(data.byteLength);
-        wasm.writeArrayToMemory(view, wasm_data);
+        let wasm_data = wasm.exports.alloc_buffer(data.byteLength);
+        this.writeArrayToMemory(view, wasm_data);
 
         // Run WASM
-        let raw = wasm.ccall('minidump_memory_info',        // Function Name
-                             'number',                      // Return Type
-                             ['number', 'number'],          // Argument Types
-                             [wasm_data, data.byteLength]); // Arguments
+        let raw = wasm.exports.minidump_memory_info(wasm_data, data.byteLength);
 
         // Release WASM buffer
-        wasm._free(wasm_data);
+        wasm.exports.free_buffer(wasm_data, data.byteLength);
         wasm_data = null;
 
         // Extract JSON result
-        let json = wasm.UTF8ToString(raw);
+        let json = this.UTF8ToString(raw);
 
         // Release buffer
-        wasm.ccall('release_json',  // Function Name
-                   null,            // Return Type
-                   ['number'],      // Argument Types
-                   [raw]);          // Arguments
+        wasm.exports.release_json(raw);
         raw = null;
 
         return json;
@@ -51,27 +59,21 @@ class MinidumpProcessor {
     wasm_module_info(data) {
         // Copy data into WASM
         let view = new Uint8Array(data);
-        let wasm_data = wasm._malloc(data.byteLength);
-        wasm.writeArrayToMemory(view, wasm_data);
+        let wasm_data = wasm.exports.alloc_buffer(data.byteLength);
+        this.writeArrayToMemory(view, wasm_data);
 
         // Run WASM
-        let raw = wasm.ccall('minidump_module',             // Function Name
-                             'number',                      // Return Type
-                             ['number', 'number'],          // Argument Types
-                             [wasm_data, data.byteLength]); // Arguments
+        let raw = wasm.exports.minidump_module(wasm_data, data.byteLength);
 
         // Release WASM buffer
-        wasm._free(wasm_data);
+        wasm.exports.free_buffer(wasm_data, data.byteLength);
         wasm_data = null;
 
         // Extract JSON result
-        let json = wasm.UTF8ToString(raw);
+        let json = this.UTF8ToString(raw);
 
         // Release buffer
-        wasm.ccall('release_json',  // Function Name
-                   null,            // Return Type
-                   ['number'],      // Argument Types
-                   [raw]);          // Arguments
+        wasm.exports.release_json(raw);
         raw = null;
 
         return json;

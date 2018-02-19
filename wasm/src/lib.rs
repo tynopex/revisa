@@ -11,10 +11,6 @@ use std::os::raw::c_char;
 use std::ffi::CString;
 
 
-// Boilerplate for WASM compiler
-fn main() { }
-
-
 // Memory allocation helpers
 #[no_mangle]
 pub unsafe fn alloc_buffer(size: u32) -> *mut u8 {
