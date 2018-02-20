@@ -21,70 +21,59 @@ class MinidumpProcessor {
         return magic;
     }
 
-    // Allocate bytes in WASM
-    wasm_alloc(nbyte) {
-        let ptr = wasm.exports.alloc_buffer(nbyte);
-        return { ptr: ptr, len: nbyte };
-    }
-
-    // Free a previous WASM allocation
-    wasm_free(wasm_buf) {
-        wasm.exports.free_buffer(wasm_buf.ptr, wasm_buf.len);
-        delete wasm_buf.len;
-        delete wasm_buf.ptr;
-    }
-
     // Allocates memory in WASM and copies from an ArrayBuffer
     data_to_wasm(arrayBuffer) {
-        let wasm_buf = this.wasm_alloc(arrayBuffer.byteLength);
-        let wasm_mem = wasm.exports.memory.buffer;
+        let wasm_buf = wasm.exports.buffer_alloc(arrayBuffer.byteLength);
+        let wasm_ptr = wasm.exports.buffer_ptr(wasm_buf);
+        let wasm_len = wasm.exports.buffer_len(wasm_buf);
 
+        let wasm_mem = wasm.exports.memory.buffer;
         let src = new Uint8Array(arrayBuffer);
-        let dst = new Uint8Array(wasm_mem, wasm_buf.ptr);
+        let dst = new Uint8Array(wasm_mem, wasm_ptr);
         dst.set(src);
 
         return wasm_buf;
     }
 
     // Transfer a JSON string from WASM into JS and free WASM memory
-    wasm_to_json(wasm_ptr) {
-        let wasm_mem = wasm.exports.memory.buffer;
+    wasm_to_json(wasm_buf) {
+        let wasm_ptr = wasm.exports.buffer_ptr(wasm_buf);
+        let wasm_len = wasm.exports.buffer_len(wasm_buf);
 
-        // Find span of null-terminated string (excluding null)
-        let src = new Uint8Array(wasm_mem, wasm_ptr);
-        let len = src.indexOf(0x00);
-        src = src.subarray(0, len);
+        let wasm_mem = wasm.exports.memory.buffer;
+        let src = new Uint8Array(wasm_mem, wasm_ptr, wasm_len);
 
         // Decode string data
         let decoder = new TextDecoder('utf-8');
         let json = decoder.decode(src);
 
         // Release WASM buffer
-        wasm.exports.release_json(wasm_ptr);
+        wasm.exports.buffer_free(wasm_buf);
 
         return json;
     }
 
     wasm_memory_info(wasm_buf) {
-        let raw = wasm.exports.minidump_memory_info(wasm_buf.ptr, wasm_buf.len);
-        return this.wasm_to_json(raw);
+        let res = wasm.exports.minidump_memory_info(wasm_buf);
+        return this.wasm_to_json(res);
     }
 
     wasm_module_info(wasm_buf) {
-        let raw = wasm.exports.minidump_module(wasm_buf.ptr, wasm_buf.len);
-        return this.wasm_to_json(raw);
+        let res = wasm.exports.minidump_module(wasm_buf);
+        return this.wasm_to_json(res);
     }
 
     process(data) {
         // Copy minidump to WASM memory
         let wasm_data = this.data_to_wasm(data);
 
+        // Run analysis
         let magic = this.get_magic(data);
         let module_info = this.wasm_module_info(wasm_data);
         let memory_info = this.wasm_memory_info(wasm_data);
 
         // Release WASM memory
-        this.wasm_free(wasm_data);
+        wasm.exports.buffer_ptr(wasm_data);
 
         // Send response to caller
         this.responder.postMessage({

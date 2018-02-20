@@ -7,5 +7,4 @@ authors = ["Ted Campbell <dev@tynopex.net>"]
 crate-type = ["cdylib"]
 
 [dependencies]
-memalloc = "*"
 revisa-minidump = { path = "../minidump" }

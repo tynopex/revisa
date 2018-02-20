@@ -7,9 +7,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate byteorder;
 
-use std::ffi::CString;
 use byteorder::{LittleEndian, ByteOrder};
-//use serde_json;
 
 
 pub struct Header {
@@ -331,7 +329,7 @@ pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
 }
 
 // Extract MemoryInfo from dump and return as JSON
-pub fn memory_info_json(dump: &[u8]) -> CString {
+pub fn memory_info_json(dump: &[u8]) -> Vec<u8> {
     let header = parse_header(&dump)
                 .map(|(h,_)| h)
                 .expect("Failed to parse minidump::Header");
@@ -348,12 +346,11 @@ pub fn memory_info_json(dump: &[u8]) -> CString {
                  .map(|(v,_)| v)
                  .unwrap();
 
-    let serialized = serde_json::to_vec(&meminfo).expect("Serializing failed");
-    CString::new(serialized).expect("Bad serialization data")
+    serde_json::to_vec(&meminfo).expect("Serializing failed")
 }
 
 // Extract Module from dump and return as JSON
-pub fn module_json(dump: &[u8]) -> CString {
+pub fn module_json(dump: &[u8]) -> Vec<u8> {
     let header = parse_header(&dump)
                 .map(|(h,_)| h)
                 .expect("Failed to parse minidump::Header");
@@ -370,6 +367,5 @@ pub fn module_json(dump: &[u8]) -> CString {
                  .map(|(v,_)| v)
                  .unwrap();
 
-    let serialized = serde_json::to_vec(&modules).expect("Serializing failed");
-    CString::new(serialized).expect("Bad serialization data")
+    serde_json::to_vec(&modules).expect("Serializing failed")
 }
