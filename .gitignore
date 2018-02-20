@@ -1,4 +1,3 @@
-/target/
-wasm/target/
 **/*.rs.bk
 Cargo.lock
+target/
