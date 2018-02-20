@@ -8,7 +8,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 memalloc = "*"
-serde = "*"
-serde_json = "*"
-serde_derive = "*"
-byteorder = "*"
+revisa-minidump = { path = "../minidump" }

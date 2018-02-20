@@ -1,0 +1,10 @@
+[package]
+name = "revisa-minidump"
+version = "0.1.0"
+authors = ["Ted Campbell <dev@tynopex.net>"]
+
+[dependencies]
+byteorder = "*"
+serde = "*"
+serde_derive = "*"
+serde_json = "*"

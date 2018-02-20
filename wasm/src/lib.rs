@@ -1,14 +1,10 @@
-#[macro_use]
-extern crate serde_derive;
-
 extern crate memalloc;
-extern crate serde;
-extern crate serde_json;
-
-mod minidump;
+extern crate revisa_minidump;
 
 use std::os::raw::c_char;
 use std::ffi::CString;
+
+use revisa_minidump as minidump;
 
 
 // Memory allocation helpers

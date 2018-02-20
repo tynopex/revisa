@@ -1,10 +1,15 @@
 #![allow(non_snake_case)]
 
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
 extern crate byteorder;
 
 use std::ffi::CString;
-use self::byteorder::{LittleEndian, ByteOrder};
-use ::serde_json;
+use byteorder::{LittleEndian, ByteOrder};
+//use serde_json;
 
 
 pub struct Header {
