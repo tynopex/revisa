@@ -58,10 +58,76 @@ class MinidumpViewer {
             mem_names[item.BaseOfImage] = item.ModuleName;
         }
 
+        function FormatProtect(pr) {
+            let base = pr & 0xFF;
+            let res = "" + base;
+
+            if      (base == 0x00) res = "";
+            else if (base == 0x01) res = "NA";
+            else if (base == 0x02) res = "RO";
+            else if (base == 0x04) res = "RW";
+            else if (base == 0x08) res = "WC";
+            else if (base == 0x10) res = "EX";
+            else if (base == 0x20) res = "EX+RD";
+            else if (base == 0x40) res = "EX+RW";
+            else if (base == 0x80) res = "EX+WC";
+
+            if (pr & 0x100) res += "+PG";
+            if (pr & 0x200) res += "+NC";
+            if (pr & 0x400) res += "+WC";
+
+            let other = pr & ~0x7FF;
+            if (other)
+                res += "+" + other;
+
+            return res;
+        }
+
+        function FormatSize(sz) {
+            if (sz & 0xFFF)
+                return "BAD_SIZE[" + sz + "]";
+
+            let kb = sz / 1024;
+            if (kb < 10000)
+                return kb.toFixed() + "kB";
+
+            let mb = kb / 1024;
+            if (mb < 10000)
+                return mb.toFixed() + "MB";
+
+            let gb = mb / 1024;
+            if (gb < 10000)
+                return gb.toFixed() + "GB";
+
+            let tb = gb / 1024;
+            if (tb < 10000)
+                return tb.toFixed() + "TB";
+
+            let eb = tb / 1024;
+            if (eb < 10000)
+                return eb.toFixed() + "EB";
+        }
+
         let list = document.createElement('ul');
+        let lastAllocationBase = 0;
+        let allocStripe = false;
         for (let item of mem_info) {
             let elem = document.createElement('li');
+
+            // Track runs of entries with same AllocationBase
+            if (lastAllocationBase != item.AllocationBase)
+                allocStripe = !allocStripe;
+            lastAllocationBase = item.AllocationBase;
+            let stripeSpan = document.createElement('span');
+            stripeSpan.append('\u00A0\u00A0');
+            stripeSpan.title = item.AllocationBase.toString(16).padStart(12, '0');
+            if (allocStripe)
+                stripeSpan.className = "alt";
+            elem.append(stripeSpan);
+
             elem.append(item.BaseAddress.toString(16).padStart(12, '0'));
+            elem.append(" " + FormatSize(item.RegionSize).padStart(6, '\u00A0'));
+            elem.append(" " + FormatProtect(item.Protect));
 
             // Memory state sets CSS class
             if (item.State == MEM_COMMIT) {

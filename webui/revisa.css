@@ -12,6 +12,15 @@
     font-family: monospace;
 }
 
+#revisa .minidump .meminfo li span {
+    background-color: lightblue;
+    cursor: default;
+}
+
+#revisa .minidump .meminfo li span.alt {
+    background-color: blue;
+}
+
 #revisa .minidump .meminfo li.free {
     background-color: grey;
 }
