@@ -156,6 +156,23 @@ class MinidumpViewer {
         dom.appendChild(list);
     }
 
+    render_memory_range(mem_range, dom) {
+        let list = document.createElement('ul');
+
+        let ranges = Array.from(mem_range);
+        ranges.sort((l,r) => (l.StartOfMemoryRange - r.StartOfMemoryRange));
+
+        for (let item of ranges) {
+            let elem = document.createElement('li');
+            elem.append('\u00A0\u00A0');
+            elem.append(item.StartOfMemoryRange.toString(16).padStart(12, '0'));
+            elem.append(" " + item.DataSize.toString().padStart(6, '\u00A0'));
+
+            list.appendChild(elem);
+        }
+        dom.appendChild(list);
+    }
+
     show_result(result) {
         this.body.innerHTML = "";
         this.body.append("Header Signature: " + result.magic);
@@ -168,6 +185,12 @@ class MinidumpViewer {
         let mem_info = JSON.parse(result.memory_info);
         this.render_memory(mem_info, mod_info, mem_dom);
         this.body.append(mem_dom);
+
+        let memdata_dom = document.createElement('div');
+        memdata_dom.className = "memdata";
+        let mem_range = JSON.parse(result.memory_range);
+        this.render_memory_range(mem_range, memdata_dom);
+        this.body.append(memdata_dom);
     }
 
     onmessage(e) {

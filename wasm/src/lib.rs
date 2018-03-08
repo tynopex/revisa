@@ -44,3 +44,11 @@ pub unsafe fn minidump_module(raw: *mut WasmBuffer) -> *mut WasmBuffer {
     let boxed = Box::new(json);
     Box::into_raw(boxed)
 }
+
+// Extract Memory Range data from a minidump
+#[no_mangle]
+pub unsafe fn minidump_memory_range(raw: *mut WasmBuffer) -> *mut WasmBuffer {
+    let json = minidump::memory_range_json(&*raw);
+    let boxed = Box::new(json);
+    Box::into_raw(boxed)
+}

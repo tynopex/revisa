@@ -40,3 +40,7 @@
 #revisa .minidump .meminfo li.image {
     font-weight: bold;
 }
+
+#revisa .minidump .memdata {
+    font-family: monospace;
+}
