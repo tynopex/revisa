@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
-use types::{Header, LocationDescriptor, Directory, MemoryInfo, Module};
+use types::{Header, LocationDescriptor, Directory, MemoryInfo, Module, MemoryRange};
 
 
 pub type ParseData<'a> = &'a[u8];
@@ -16,7 +16,7 @@ fn take(data: ParseData, len: usize) -> ParseResult<ParseData> {
 }
 
 
-pub fn parse_header(data: &[u8]) -> ParseResult<Header> {
+pub fn parse_header(data: ParseData) -> ParseResult<Header> {
     /* struct MINIDUMP_HEADER {
         ULONG32     Signature;
         ULONG32     Version;
@@ -252,6 +252,55 @@ pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
             let (name,_) = parse_string(data, entry.ModuleNameRva)?;
             entry.ModuleName = Some(name);
         }
+
+        vec.push(entry);
+    }
+
+    Ok((vec,data))
+}
+
+fn memory_range(data: ParseData) -> ParseResult<MemoryRange> {
+    /* struct MINIDUMP_MEMORY_DESCRIPTOR {
+        ULONG64                         StartOfMemoryRange;
+        MINIDUMP_LOCATION_DESCRIPTOR    Memory;
+    } */
+
+    let (loc,remain) = location(&data[8..])?;
+
+    let range = MemoryRange {
+        StartOfMemoryRange: LittleEndian::read_u64(&data[0..8]),
+        DataSize: loc.DataSize,
+        Rva: loc.Rva,
+    };
+
+    Ok((range,remain))
+}
+
+pub fn parse_memory_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> ParseResult<'a, Vec<MemoryRange>> {
+    /* struct MINIDUMP_MEMORY_LIST {
+        ULONG32 NumberOfMemoryRanges;
+    } */
+
+    let mut vec = Vec::new();
+
+    let rva = loc.Rva as usize;
+    if rva > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[rva..];
+
+    let SizeOfHeader = 4;   // Packed header size
+    let SizeOfEntry = 16;   // Packed MINIDUMP_MEMORY_DESCRIPTOR size
+    let NumberOfMemoryRanges = LittleEndian::read_u32(&raw[0..4]);
+
+    if SizeOfHeader + (SizeOfEntry * NumberOfMemoryRanges as u32) != loc.DataSize {
+        return Err("Unexpected Stream size");
+    }
+
+    vec.reserve(NumberOfMemoryRanges as usize);
+    for i in 0..NumberOfMemoryRanges {
+        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
+        let (mut entry,_) = memory_range(&raw[offset..])?;
 
         vec.push(entry);
     }

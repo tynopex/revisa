@@ -63,3 +63,10 @@ pub struct Module {
 
     pub ModuleName: Option<String>,
 }
+
+#[derive(Serialize)]
+pub struct MemoryRange {
+    pub StartOfMemoryRange: u64,
+    pub DataSize: u32,
+    pub Rva: u32,
+}

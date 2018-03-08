@@ -52,3 +52,24 @@ pub fn module_json(dump: &[u8]) -> Vec<u8> {
 
     serde_json::to_vec(&modules).expect("Serializing failed")
 }
+
+// Extract Memory range info from dump and return as JSON
+pub fn memory_range_json(dump: &[u8]) -> Vec<u8> {
+    let header = parse::parse_header(&dump)
+                .map(|(h,_)| h)
+                .expect("Failed to parse minidump::Header");
+
+    let dir = parse::parse_directory(&dump, &header)
+             .map(|(d,_)| d)
+             .expect("Failed to parse minidump Directory list");
+
+    let memstream = dir.iter()
+                       .find(|&el| el.StreamType == StreamType::MemoryListStream as u32)
+                       .expect("Unable to find memory stream");
+
+    let ranges = parse::parse_memory_list(&dump, &memstream.Location)
+                .map(|(v,_)| v)
+                .unwrap();
+
+    serde_json::to_vec(&ranges).expect("Serializing failed")
+}
