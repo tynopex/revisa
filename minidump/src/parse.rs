@@ -1,20 +1,18 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
-use types::{Header, LocationDescriptor, Directory, MemoryInfo, Module, MemoryRange};
+use types::{Directory, Header, LocationDescriptor, MemoryInfo, MemoryRange, Module};
 
-
-pub type ParseData<'a> = &'a[u8];
+pub type ParseData<'a> = &'a [u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
 
 fn take(data: ParseData, len: usize) -> ParseResult<ParseData> {
     if data.len() < len {
         return Err("Incomplete Data");
     } else {
-        return Ok(data.split_at(len))
+        return Ok(data.split_at(len));
     }
 }
-
 
 pub fn parse_header(data: ParseData) -> ParseResult<Header> {
     /* struct MINIDUMP_HEADER {
@@ -27,7 +25,7 @@ pub fn parse_header(data: ParseData) -> ParseResult<Header> {
         ULONG64     Flags;
     } */
 
-    let (raw,remain) = take(data, 32)?;
+    let (raw, remain) = take(data, 32)?;
 
     let signature = &raw[0..4];
     let version = LittleEndian::read_u16(&raw[4..6]);
@@ -48,7 +46,7 @@ pub fn parse_header(data: ParseData) -> ParseResult<Header> {
         Flags: LittleEndian::read_u64(&raw[24..32]),
     };
 
-    Ok((header,remain))
+    Ok((header, remain))
 }
 
 fn location(data: ParseData) -> ParseResult<LocationDescriptor> {
@@ -57,14 +55,14 @@ fn location(data: ParseData) -> ParseResult<LocationDescriptor> {
         RVA         Rva;
     } */
 
-    let (raw,remain) = take(data, 8)?;
+    let (raw, remain) = take(data, 8)?;
 
     let loc = LocationDescriptor {
         DataSize: LittleEndian::read_u32(&raw[0..4]),
         Rva: LittleEndian::read_u32(&raw[4..8]),
     };
 
-    Ok((loc,remain))
+    Ok((loc, remain))
 }
 
 fn directory_entry(data: ParseData) -> ParseResult<Directory> {
@@ -73,14 +71,14 @@ fn directory_entry(data: ParseData) -> ParseResult<Directory> {
         MINIDUMP_LOCATION_DESCRIPTOR    Location;
     } */
 
-    let (loc,remain) = location(&data[4..])?;
+    let (loc, remain) = location(&data[4..])?;
 
     let directory = Directory {
         StreamType: LittleEndian::read_u32(&data[0..4]),
         Location: loc,
     };
 
-    Ok((directory,remain))
+    Ok((directory, remain))
 }
 
 fn memory_info(data: ParseData) -> ParseResult<MemoryInfo> {
@@ -96,7 +94,7 @@ fn memory_info(data: ParseData) -> ParseResult<MemoryInfo> {
         ULONG32     __alignment2;
      } */
 
-    let (raw,remain) = take(data, 48)?;
+    let (raw, remain) = take(data, 48)?;
 
     let mem_info = MemoryInfo {
         BaseAddress: LittleEndian::read_u64(&raw[0..8]),
@@ -108,10 +106,13 @@ fn memory_info(data: ParseData) -> ParseResult<MemoryInfo> {
         Type: LittleEndian::read_u32(&raw[40..44]),
     };
 
-    Ok((mem_info,remain))
+    Ok((mem_info, remain))
 }
 
-pub fn parse_directory<'a>(data: ParseData<'a>, header: &Header) -> ParseResult<'a, Vec<Directory>> {
+pub fn parse_directory<'a>(
+    data: ParseData<'a>,
+    header: &Header,
+) -> ParseResult<'a, Vec<Directory>> {
     let mut vec = Vec::new();
 
     let rva = header.StreamDirectory as usize;
@@ -127,10 +128,13 @@ pub fn parse_directory<'a>(data: ParseData<'a>, header: &Header) -> ParseResult<
         raw = raw_next;
     }
 
-    Ok((vec,data))
+    Ok((vec, data))
 }
 
-pub fn parse_memory_info<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> ParseResult<'a, Vec<MemoryInfo>> {
+pub fn parse_memory_info<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, Vec<MemoryInfo>> {
     /* struct MINIDUMP_MEMORY_INFO_LIST {
         ULONG SizeOfHeader;
         ULONG SizeOfEntry;
@@ -159,11 +163,11 @@ pub fn parse_memory_info<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     vec.reserve(NumberOfEntries as usize);
     for i in 0..(NumberOfEntries as u32) {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (entry,_) = memory_info(&raw[offset..])?;
+        let (entry, _) = memory_info(&raw[offset..])?;
         vec.push(entry);
     }
 
-    Ok((vec,data))
+    Ok((vec, data))
 }
 
 fn module(data: ParseData) -> ParseResult<Module> {
@@ -180,7 +184,7 @@ fn module(data: ParseData) -> ParseResult<Module> {
         ULONG64                         Reserved1;
     } */
 
-    let (raw,remain) = take(data, 108)?;
+    let (raw, remain) = take(data, 108)?;
 
     let module = Module {
         BaseOfImage: LittleEndian::read_u64(&raw[0..8]),
@@ -192,7 +196,7 @@ fn module(data: ParseData) -> ParseResult<Module> {
         ModuleName: None,
     };
 
-    Ok((module,remain))
+    Ok((module, remain))
 }
 
 pub fn parse_string<'a>(data: ParseData<'a>, rva_: u32) -> ParseResult<'a, String> {
@@ -215,13 +219,15 @@ pub fn parse_string<'a>(data: ParseData<'a>, rva_: u32) -> ParseResult<'a, Strin
         let elem = LittleEndian::read_u16(&raw[offset..]);
         elems.push(elem);
     }
-    let string = String::from_utf16(&elems)
-                        .map_err(|_| "bad UTF-16 data")?;
+    let string = String::from_utf16(&elems).map_err(|_| "bad UTF-16 data")?;
 
-    Ok((string,data))
+    Ok((string, data))
 }
 
-pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> ParseResult<'a, Vec<Module>> {
+pub fn parse_module_list<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, Vec<Module>> {
     /* struct MINIDUMP_MODULE_LIST {
         ULONG32 NumberOfModules;
     } */
@@ -234,8 +240,8 @@ pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     }
     let raw = &data[rva..];
 
-    let SizeOfHeader = 4;   // Packed header size
-    let SizeOfEntry = 108;  // Packed MINIDUMP_MODULE size
+    let SizeOfHeader = 4; // Packed header size
+    let SizeOfEntry = 108; // Packed MINIDUMP_MODULE size
     let NumberOfModules = LittleEndian::read_u32(&raw[0..4]);
 
     if SizeOfHeader + (SizeOfEntry * NumberOfModules as u32) != loc.DataSize {
@@ -245,18 +251,18 @@ pub fn parse_module_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     vec.reserve(NumberOfModules as usize);
     for i in 0..NumberOfModules {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry,_) = module(&raw[offset..])?;
+        let (mut entry, _) = module(&raw[offset..])?;
 
         // Look up name string
         if entry.ModuleNameRva > 0 {
-            let (name,_) = parse_string(data, entry.ModuleNameRva)?;
+            let (name, _) = parse_string(data, entry.ModuleNameRva)?;
             entry.ModuleName = Some(name);
         }
 
         vec.push(entry);
     }
 
-    Ok((vec,data))
+    Ok((vec, data))
 }
 
 fn memory_range(data: ParseData) -> ParseResult<MemoryRange> {
@@ -265,7 +271,7 @@ fn memory_range(data: ParseData) -> ParseResult<MemoryRange> {
         MINIDUMP_LOCATION_DESCRIPTOR    Memory;
     } */
 
-    let (loc,remain) = location(&data[8..])?;
+    let (loc, remain) = location(&data[8..])?;
 
     let range = MemoryRange {
         StartOfMemoryRange: LittleEndian::read_u64(&data[0..8]),
@@ -273,10 +279,13 @@ fn memory_range(data: ParseData) -> ParseResult<MemoryRange> {
         Rva: loc.Rva,
     };
 
-    Ok((range,remain))
+    Ok((range, remain))
 }
 
-pub fn parse_memory_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> ParseResult<'a, Vec<MemoryRange>> {
+pub fn parse_memory_list<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, Vec<MemoryRange>> {
     /* struct MINIDUMP_MEMORY_LIST {
         ULONG32 NumberOfMemoryRanges;
     } */
@@ -289,8 +298,8 @@ pub fn parse_memory_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     }
     let raw = &data[rva..];
 
-    let SizeOfHeader = 4;   // Packed header size
-    let SizeOfEntry = 16;   // Packed MINIDUMP_MEMORY_DESCRIPTOR size
+    let SizeOfHeader = 4; // Packed header size
+    let SizeOfEntry = 16; // Packed MINIDUMP_MEMORY_DESCRIPTOR size
     let NumberOfMemoryRanges = LittleEndian::read_u32(&raw[0..4]);
 
     if SizeOfHeader + (SizeOfEntry * NumberOfMemoryRanges as u32) != loc.DataSize {
@@ -300,10 +309,10 @@ pub fn parse_memory_list<'a>(data: ParseData<'a>, loc: &LocationDescriptor) -> P
     vec.reserve(NumberOfMemoryRanges as usize);
     for i in 0..NumberOfMemoryRanges {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry,_) = memory_range(&raw[offset..])?;
+        let (mut entry, _) = memory_range(&raw[offset..])?;
 
         vec.push(entry);
     }
 
-    Ok((vec,data))
+    Ok((vec, data))
 }

@@ -2,7 +2,6 @@ extern crate revisa_minidump;
 
 use revisa_minidump as minidump;
 
-
 // Use opaque buffer type for interop
 type WasmBuffer = Vec<u8>;
 
@@ -27,7 +26,6 @@ pub unsafe fn buffer_len(raw: *mut WasmBuffer) -> usize {
 pub unsafe fn buffer_free(raw: *mut WasmBuffer) {
     drop(Box::from_raw(raw));
 }
-
 
 // Extract MemoryInfo data from a minidump
 #[no_mangle]
