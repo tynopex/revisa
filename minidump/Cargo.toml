@@ -8,3 +8,6 @@ byteorder = "*"
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
+
+[[bin]]
+name = "parse-minidump"
