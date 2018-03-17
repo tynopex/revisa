@@ -70,16 +70,16 @@ class MinidumpProcessor {
 
     process(data) {
         // Copy minidump to WASM memory
-        let wasm_data = this.data_to_wasm(data);
+        let wasm_buf = this.data_to_wasm(data);
 
         // Run analysis
         let magic = this.get_magic(data);
-        let module_info = this.wasm_module_info(wasm_data);
-        let memory_info = this.wasm_memory_info(wasm_data);
-        let memory_range = this.wasm_memory_range(wasm_data);
+        let module_info = this.wasm_module_info(wasm_buf);
+        let memory_info = this.wasm_memory_info(wasm_buf);
+        let memory_range = this.wasm_memory_range(wasm_buf);
 
         // Release WASM memory
-        wasm.exports.buffer_ptr(wasm_data);
+        wasm.exports.buffer_free(wasm_buf);
 
         // Send response to caller
         this.responder.postMessage({
