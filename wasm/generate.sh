@@ -1,12 +1,13 @@
 #!/bin/sh
 
-SRC_DIR="target/wasm32-unknown-unknown/release"
-DST_DIR="../webui"
+TARGET=wasm32-unknown-unknown
+SRC_DIR=target/${TARGET}/release
+DST_DIR=../webui
 
 # Release build
 cargo \
     build \
-    --target wasm32-unknown-unknown \
+    --target ${TARGET} \
     --release
 
 # Strip dead code
