@@ -275,8 +275,8 @@ fn memory_range(data: ParseData) -> ParseResult<MemoryRange> {
 
     let range = MemoryRange {
         StartOfMemoryRange: LittleEndian::read_u64(&data[0..8]),
-        DataSize: loc.DataSize,
-        Rva: loc.Rva,
+        DataSize: loc.DataSize as u64,
+        Rva: loc.Rva as u64,
     };
 
     Ok((range, remain))
@@ -310,6 +310,64 @@ pub fn parse_memory_list<'a>(
     for i in 0..NumberOfMemoryRanges {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
         let (mut entry, _) = memory_range(&raw[offset..])?;
+
+        vec.push(entry);
+    }
+
+    Ok((vec, data))
+}
+
+fn memory_range64(data: ParseData, base: u64) -> ParseResult<MemoryRange> {
+    /* struct MINIDUMP_MEMORY_DESCRIPTOR {
+        ULONG64 StartOfMemoryRange;
+        ULONG64 DataSize;
+    } */
+
+    let (raw, remain) = take(data, 16)?;
+
+    let range = MemoryRange {
+        StartOfMemoryRange: LittleEndian::read_u64(&raw[0..8]),
+        DataSize: LittleEndian::read_u64(&raw[8..16]),
+        Rva: base,
+    };
+
+    Ok((range, remain))
+}
+
+pub fn parse_memory64_list<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, Vec<MemoryRange>> {
+    /* struct MINIDUMP_MEMORY64_LIST {
+        ULONG64 NumberOfMemoryRanges;
+        RVA64   BaseRva;
+    } */
+
+    let mut vec = Vec::new();
+
+    let rva = loc.Rva as usize;
+    if rva > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[rva..];
+
+    let SizeOfHeader = 16; // Packed header size
+    let SizeOfEntry = 16; // Packed MINIDUMP_MEMORY_DESCRIPTOR64 size
+    let NumberOfMemoryRanges = LittleEndian::read_u64(&raw[0..8]);
+    let mut BaseRva = LittleEndian::read_u64(&raw[8..16]);
+
+    if SizeOfHeader + (SizeOfEntry * NumberOfMemoryRanges) != loc.DataSize as u64 {
+        return Err("Unexpected Stream size");
+    }
+
+    vec.reserve(NumberOfMemoryRanges as usize);
+    for i in 0..NumberOfMemoryRanges {
+        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
+        let (mut entry, _) = memory_range64(&raw[offset..], BaseRva)?;
+
+        // Memory64 data is stored contiguously at end of file so RVA of a chunk
+        // is BaseRva plus size of all chunks before.
+        BaseRva += entry.DataSize;
 
         vec.push(entry);
     }

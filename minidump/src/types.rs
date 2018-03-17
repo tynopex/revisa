@@ -67,6 +67,6 @@ pub struct Module {
 #[derive(Serialize)]
 pub struct MemoryRange {
     pub StartOfMemoryRange: u64,
-    pub DataSize: u32,
-    pub Rva: u32,
+    pub DataSize: u64,
+    pub Rva: u64,
 }

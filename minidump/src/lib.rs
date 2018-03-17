@@ -63,10 +63,19 @@ pub fn memory_range_json(dump: &[u8]) -> Vec<u8> {
         .expect("Failed to parse minidump Directory list");
 
     let memstream = dir.iter()
-        .find(|&el| el.StreamType == StreamType::MemoryListStream as u32)
+        .find(|&el| {
+            el.StreamType == StreamType::MemoryListStream as u32
+                || el.StreamType == StreamType::Memory64ListStream as u32
+        })
         .expect("Unable to find memory stream");
 
-    let ranges = parse::parse_memory_list(&dump, &memstream.Location)
+    let parse_fn = if memstream.StreamType == StreamType::Memory64ListStream as u32 {
+        parse::parse_memory64_list
+    } else {
+        parse::parse_memory_list
+    };
+
+    let ranges = parse_fn(&dump, &memstream.Location)
         .map(|(v, _)| v)
         .unwrap();
 
