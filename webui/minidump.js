@@ -103,25 +103,23 @@ class MinidumpViewer {
 
     render_memory(mem_info, dom) {
         let allocStripe = false;
-        let list = document.createElement('ul');
+        let list = document.createElement('div');
 
         for (let alloc of mem_info) {
             // Alternate stripe per allocation region
             allocStripe = !allocStripe;
 
-            for (let item of alloc.Regions) {
-                let elem = document.createElement('li');
+            let alloc_elem = document.createElement('div');
+            alloc_elem.className = "alloc";
+            if (allocStripe)
+                alloc_elem.classList.add("alt");
 
-                let stripeSpan = document.createElement('span');
-                stripeSpan.append('\u00A0\u00A0');
-                stripeSpan.title = alloc.AllocationBase.toString(16).padStart(12, '0');
-                if (allocStripe)
-                    stripeSpan.className = "alt";
-                elem.append(stripeSpan);
+            for (let item of alloc.Regions) {
+                let elem = document.createElement('div');
 
                 elem.append(item.BaseAddress.toString(16).padStart(12, '0'));
                 elem.append(" " + MemoryFlags.FormatSize(item.RegionSize).padStart(6, '\u00A0'));
-                elem.append(" " + MemoryFlags.FormatProtect(item.Protect));
+                elem.append(" " + MemoryFlags.FormatProtect(item.Protect).padEnd(8, '\u00A0'));
 
                 // Memory state sets CSS class
                 if (item.State == MemoryFlags.MEM_COMMIT) {
@@ -145,8 +143,10 @@ class MinidumpViewer {
                     }
                 }
 
-                list.appendChild(elem);
+                alloc_elem.appendChild(elem);
             }
+
+            list.appendChild(alloc_elem);
         }
 
         dom.appendChild(list);

@@ -3,33 +3,31 @@
     font-family: monospace;
 }
 
-#revisa .minidump .meminfo li span {
-    background-color: lightblue;
+#revisa .minidump .meminfo div.alloc {
+    background-color: #EEF;
     cursor: default;
+    margin-left: 2em;
+    padding-left: 2em;
 }
 
-#revisa .minidump .meminfo li span.alt {
-    background-color: blue;
+#revisa .minidump .meminfo div.alt {
+    background-color: #DDF;
 }
 
-#revisa .minidump .meminfo li.free {
-    background-color: grey;
+#revisa .minidump .meminfo div.free {
+    background-color: #CCC;
 }
 
-#revisa .minidump .meminfo li.commit {
-    background-color: green;
+#revisa .minidump .meminfo div.commit {
+    background-color: #CEC;
 }
 
-#revisa .minidump .meminfo li.reserve {
-    background-color: lightgreen;
+#revisa .minidump .meminfo div.reserve {
+    background-color: #DFD;
 }
 
-#revisa .minidump .meminfo li.unknown {
-    background-color: red;
-}
-
-#revisa .minidump .meminfo li.image {
-    font-weight: bold;
+#revisa .minidump .meminfo div.unknown {
+    background-color: #F88;
 }
 
 #revisa .minidump .memdata {
