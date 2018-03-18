@@ -17,6 +17,14 @@
     background-color: #DDF;
 }
 
+#revisa .minidump .meminfo div.collapse div:not(.folded) {
+    display: none;
+}
+
+#revisa .minidump .meminfo div:not(.collapse) div.folded {
+    display: none;
+}
+
 #revisa .minidump .meminfo div.free {
     background-color: #CCC;
 }

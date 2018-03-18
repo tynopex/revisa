@@ -143,6 +143,20 @@ class MinidumpViewer {
             if (allocStripe)
                 alloc_elem.classList.add("alt");
 
+            // Collapsed form
+            let folded_elem = document.createElement('div');
+            folded_elem.className = "folded";
+            folded_elem.append(alloc.AllocationBase.toString(16).padStart(12, '0'));
+            folded_elem.append(" " + MemoryFlags.FormatSize(alloc.AllocationSize).padStart(6, '\u00A0'));
+            if (alloc.ModuleName)
+                folded_elem.append('\u00A0' + alloc.ModuleName);
+            alloc_elem.appendChild(folded_elem);
+
+            // Click on div to toggle collapse
+            alloc_elem.addEventListener("click", ev => {
+                ev.currentTarget.classList.toggle("collapse");
+            });
+
             for (let item of alloc.Regions) {
                 let elem = document.createElement('div');
 
