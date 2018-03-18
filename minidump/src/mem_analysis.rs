@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use parse;
-use types::{MemoryInfo, StreamType};
+use parse::{self, ParseData};
+use types::{MemoryInfo, Module, StreamType};
 
 #[derive(Serialize)]
 pub struct ProtectionRegion {
@@ -24,6 +24,7 @@ pub struct AllocationRegion {
 
 // Windows Memory Constants
 const MEM_FREE: u32 = 0x00010000;
+const MEM_IMAGE: u32 = 0x01000000;
 const PAGE_NOACCESS: u32 = 0x00000001;
 
 // Group memory regions by allocation region
@@ -83,13 +84,35 @@ fn find_allocation_regions(meminfo: &[MemoryInfo]) -> Vec<AllocationRegion> {
     regions
 }
 
+fn annotate_modules(regions: &mut [AllocationRegion], modules: &[Module], data: ParseData) {
+    for module in modules {
+        let idx = regions
+            .binary_search_by_key(&module.BaseOfImage, |x| x.AllocationBase)
+            .expect("Module doesn't belong to any region");
+
+        let region = &mut regions[idx];
+
+        assert!(region.AllocationSize == module.SizeOfImage as u64);
+        region
+            .Regions
+            .iter()
+            .for_each(|x| assert!(x.Type == MEM_IMAGE));
+
+        // Annotate module name
+        region.ModuleName = parse::parse_string(data, module.ModuleNameRva)
+            .map(|(n, _)| n)
+            .ok();
+        assert!(region.ModuleName.is_some());
+    }
+}
+
 // Rebuilds minidump data into a more useful format
-pub fn memory_analysis(dump: &[u8]) -> Vec<AllocationRegion> {
-    let header = parse::parse_header(&dump)
+pub fn memory_analysis(data: ParseData) -> Vec<AllocationRegion> {
+    let header = parse::parse_header(data)
         .map(|(h, _)| h)
         .expect("Failed to parse minidump::Header");
 
-    let dir = parse::parse_directory(&dump, &header)
+    let dir = parse::parse_directory(data, &header)
         .map(|(d, _)| d)
         .expect("Failed to parse minidump Directory list");
 
@@ -97,11 +120,21 @@ pub fn memory_analysis(dump: &[u8]) -> Vec<AllocationRegion> {
         .find(|&el| el.StreamType == StreamType::MemoryInfoListStream as u32)
         .expect("Unable to find memory info stream");
 
-    let meminfo = parse::parse_memory_info(&dump, &meminfostream.Location)
+    let meminfo = parse::parse_memory_info(data, &meminfostream.Location)
         .map(|(v, _)| v)
         .unwrap();
 
-    let alloc_regions = find_allocation_regions(&meminfo);
+    let mut alloc_regions = find_allocation_regions(&meminfo);
+
+    let modulestream = dir.iter()
+        .find(|&el| el.StreamType == StreamType::ModuleListStream as u32)
+        .expect("Unable to find module list stream");
+
+    let modules = parse::parse_module_list(data, &modulestream.Location)
+        .map(|(v, _)| v)
+        .unwrap();
+
+    annotate_modules(&mut alloc_regions, &modules, data);
 
     alloc_regions
 }
