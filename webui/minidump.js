@@ -160,13 +160,13 @@ class MinidumpViewer {
         let list = document.createElement('ul');
 
         let ranges = Array.from(mem_range);
-        ranges.sort((l,r) => (l.StartOfMemoryRange - r.StartOfMemoryRange));
+        ranges.sort((l,r) => (l.Address - r.Address));
 
         for (let item of ranges) {
             let elem = document.createElement('li');
             elem.append('\u00A0\u00A0');
-            elem.append(item.StartOfMemoryRange.toString(16).padStart(12, '0'));
-            elem.append(" " + item.DataSize.toString().padStart(6, '\u00A0'));
+            elem.append(item.Address.toString(16).padStart(12, '0'));
+            elem.append(" " + item.Location.Length.toString().padStart(6, '\u00A0'));
 
             list.appendChild(elem);
         }

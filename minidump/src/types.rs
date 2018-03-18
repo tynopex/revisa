@@ -8,9 +8,16 @@ pub struct Header {
     pub Flags: u64,
 }
 
+#[derive(Serialize)]
 pub struct LocationDescriptor {
-    pub DataSize: u64,
-    pub Rva: u64,
+    pub Offset: u64,
+    pub Length: u64,
+}
+
+#[derive(Serialize)]
+pub struct OverlayDescriptor {
+    pub Address: u64,
+    pub Location: LocationDescriptor,
 }
 
 #[derive(Debug)]
@@ -62,11 +69,4 @@ pub struct Module {
     pub ModuleNameRva: u32,
 
     pub ModuleName: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct MemoryRange {
-    pub StartOfMemoryRange: u64,
-    pub DataSize: u64,
-    pub Rva: u64,
 }
