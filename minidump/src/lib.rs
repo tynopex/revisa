@@ -7,6 +7,7 @@ extern crate serde_json;
 
 mod parse;
 mod types;
+mod mem_analysis;
 
 use types::StreamType;
 
@@ -80,4 +81,11 @@ pub fn memory_range_json(dump: &[u8]) -> Vec<u8> {
         .unwrap();
 
     serde_json::to_vec(&ranges).expect("Serializing failed")
+}
+
+// Analyze memory info into a more useful format
+pub fn memory_analysis_json(dump: &[u8]) -> Vec<u8> {
+    let analysis = mem_analysis::memory_analysis(dump);
+
+    serde_json::to_vec(&analysis).expect("Serializing failed")
 }
