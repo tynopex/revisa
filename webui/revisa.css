@@ -1,12 +1,3 @@
-#revisa .console textarea {
-    width: 80%;
-    height: 20em;
-}
-
-#revisa .console input {
-    width: 80%;
-}
-
 #revisa .minidump .meminfo {
     width: 80%;
     font-family: monospace;
