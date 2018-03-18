@@ -103,9 +103,23 @@ class MinidumpViewer {
 
     render_memory(mem_info, dom) {
         let allocStripe = false;
-        let list = document.createElement('div');
+        let prev_limit = 0;
 
         for (let alloc of mem_info) {
+            // Add div if there is free address space between allocations.
+            if (alloc.AllocationBase > prev_limit) {
+                let base = prev_limit;
+                let size = alloc.AllocationBase - prev_limit;
+
+                let empty_elem = document.createElement('div');
+                empty_elem.className = "free";
+                empty_elem.append(base.toString(16).padStart(12, '0'));
+                empty_elem.append(" " + MemoryFlags.FormatSize(size).padStart(6, '\u00A0'));
+
+                dom.appendChild(empty_elem);
+            }
+            prev_limit = alloc.AllocationBase + alloc.AllocationSize;
+
             // Alternate stripe per allocation region
             allocStripe = !allocStripe;
 
@@ -146,10 +160,8 @@ class MinidumpViewer {
                 alloc_elem.appendChild(elem);
             }
 
-            list.appendChild(alloc_elem);
+            dom.appendChild(alloc_elem);
         }
-
-        dom.appendChild(list);
     }
 
     render_memory_range(mem_range, dom) {

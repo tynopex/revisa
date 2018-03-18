@@ -1,13 +1,16 @@
 #revisa .minidump .meminfo {
     width: 80%;
     font-family: monospace;
+    margin-left: 2em;
+    cursor: default;
+}
+
+#revisa .minidump .meminfo > div {
+    padding-left: 2em;
 }
 
 #revisa .minidump .meminfo div.alloc {
     background-color: #EEF;
-    cursor: default;
-    margin-left: 2em;
-    padding-left: 2em;
 }
 
 #revisa .minidump .meminfo div.alt {
