@@ -9,8 +9,8 @@ pub struct Header {
 }
 
 pub struct LocationDescriptor {
-    pub DataSize: u32,
-    pub Rva: u32,
+    pub DataSize: u64,
+    pub Rva: u64,
 }
 
 #[derive(Debug)]

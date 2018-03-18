@@ -19,7 +19,7 @@ pub fn parse_header(data: ParseData) -> ParseResult<Header> {
         ULONG32     Signature;
         ULONG32     Version;
         ULONG32     NumberOfStreams;
-        RVA         StreamDirectoryRva;
+        RVA32       StreamDirectoryRva;
         ULONG32     CheckSum;
         ULONG32     TimeDateStamp;
         ULONG64     Flags;
@@ -52,14 +52,14 @@ pub fn parse_header(data: ParseData) -> ParseResult<Header> {
 fn location(data: ParseData) -> ParseResult<LocationDescriptor> {
     /* struct MINIDUMP_LOCATION_DESCRIPTOR {
         ULONG32     DataSize;
-        RVA         Rva;
+        RVA32       Rva;
     } */
 
     let (raw, remain) = take(data, 8)?;
 
     let loc = LocationDescriptor {
-        DataSize: LittleEndian::read_u32(&raw[0..4]),
-        Rva: LittleEndian::read_u32(&raw[4..8]),
+        DataSize: LittleEndian::read_u32(&raw[0..4]) as u64,
+        Rva: LittleEndian::read_u32(&raw[4..8]) as u64,
     };
 
     Ok((loc, remain))
@@ -149,19 +149,19 @@ pub fn parse_memory_info<'a>(
     }
     let raw = &data[rva..];
 
-    let SizeOfHeader = LittleEndian::read_u32(&raw[0..4]);
-    let SizeOfEntry = LittleEndian::read_u32(&raw[4..8]);
+    let SizeOfHeader = LittleEndian::read_u32(&raw[0..4]) as u64;
+    let SizeOfEntry = LittleEndian::read_u32(&raw[4..8]) as u64;
     let NumberOfEntries = LittleEndian::read_u64(&raw[8..16]);
 
     if NumberOfEntries > u32::max_value() as u64 {
-        return Err("Unexpected Stream size");
+        return Err("Unexpected number of entries");
     }
-    if SizeOfHeader + (SizeOfEntry * NumberOfEntries as u32) != loc.DataSize {
+    if SizeOfHeader + NumberOfEntries * SizeOfEntry != loc.DataSize {
         return Err("Unexpected Stream size");
     }
 
     vec.reserve(NumberOfEntries as usize);
-    for i in 0..(NumberOfEntries as u32) {
+    for i in 0..NumberOfEntries {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
         let (entry, _) = memory_info(&raw[offset..])?;
         vec.push(entry);
@@ -176,7 +176,7 @@ fn module(data: ParseData) -> ParseResult<Module> {
         ULONG32                         SizeOfImage;
         ULONG32                         CheckSum;
         ULONG32                         TimeDateStamp;
-        RVA                             ModuleNameRva;
+        RVA32                           ModuleNameRva;
         VS_FIXEDFILEINFO                VersionInfo;
         MINIDUMP_LOCATION_DESCRIPTOR    CvRecord;
         MINIDUMP_LOCATION_DESCRIPTOR    MiscRecord;
@@ -242,9 +242,12 @@ pub fn parse_module_list<'a>(
 
     let SizeOfHeader = 4; // Packed header size
     let SizeOfEntry = 108; // Packed MINIDUMP_MODULE size
-    let NumberOfModules = LittleEndian::read_u32(&raw[0..4]);
+    let NumberOfModules = LittleEndian::read_u32(&raw[0..4]) as u64;
 
-    if SizeOfHeader + (SizeOfEntry * NumberOfModules as u32) != loc.DataSize {
+    if NumberOfModules > u32::max_value() as u64 {
+        return Err("Unexpected number of modules");
+    }
+    if SizeOfHeader + NumberOfModules * SizeOfEntry != loc.DataSize {
         return Err("Unexpected Stream size");
     }
 
@@ -275,8 +278,8 @@ fn memory_range(data: ParseData) -> ParseResult<MemoryRange> {
 
     let range = MemoryRange {
         StartOfMemoryRange: LittleEndian::read_u64(&data[0..8]),
-        DataSize: loc.DataSize as u64,
-        Rva: loc.Rva as u64,
+        DataSize: loc.DataSize,
+        Rva: loc.Rva,
     };
 
     Ok((range, remain))
@@ -300,9 +303,12 @@ pub fn parse_memory_list<'a>(
 
     let SizeOfHeader = 4; // Packed header size
     let SizeOfEntry = 16; // Packed MINIDUMP_MEMORY_DESCRIPTOR size
-    let NumberOfMemoryRanges = LittleEndian::read_u32(&raw[0..4]);
+    let NumberOfMemoryRanges = LittleEndian::read_u32(&raw[0..4]) as u64;
 
-    if SizeOfHeader + (SizeOfEntry * NumberOfMemoryRanges as u32) != loc.DataSize {
+    if NumberOfMemoryRanges > u32::max_value() as u64 {
+        return Err("Unexpected number of memory ranges");
+    }
+    if SizeOfHeader + NumberOfMemoryRanges * SizeOfEntry != loc.DataSize {
         return Err("Unexpected Stream size");
     }
 
@@ -356,7 +362,10 @@ pub fn parse_memory64_list<'a>(
     let NumberOfMemoryRanges = LittleEndian::read_u64(&raw[0..8]);
     let mut BaseRva = LittleEndian::read_u64(&raw[8..16]);
 
-    if SizeOfHeader + (SizeOfEntry * NumberOfMemoryRanges) != loc.DataSize as u64 {
+    if NumberOfMemoryRanges > u32::max_value() as u64 {
+        return Err("Unexpected number of memory ranges");
+    }
+    if SizeOfHeader + NumberOfMemoryRanges * SizeOfEntry != loc.DataSize {
         return Err("Unexpected Stream size");
     }
 
