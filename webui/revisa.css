@@ -21,6 +21,14 @@
     background-color: #CCC;
 }
 
+#revisa .minidump .meminfo div.free.collapse {
+    height: 0.25em;
+}
+
+#revisa .minidump .meminfo div.free.collapse * {
+    display: none;
+}
+
 #revisa .minidump .meminfo div.commit {
     background-color: #CEC;
 }

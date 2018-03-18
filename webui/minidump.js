@@ -105,6 +105,9 @@ class MinidumpViewer {
         let allocStripe = false;
         let prev_limit = 0;
 
+        // Threshold for unallocated regions to be rendered compact
+        const SMALL_UNALLOCATED = 1024 * 1024;
+
         for (let alloc of mem_info) {
             // Add div if there is free address space between allocations.
             if (alloc.AllocationBase > prev_limit) {
@@ -113,8 +116,20 @@ class MinidumpViewer {
 
                 let empty_elem = document.createElement('div');
                 empty_elem.className = "free";
-                empty_elem.append(base.toString(16).padStart(12, '0'));
-                empty_elem.append(" " + MemoryFlags.FormatSize(size).padStart(6, '\u00A0'));
+
+                let detail = document.createElement('span');
+                detail.append(base.toString(16).padStart(12, '0'));
+                detail.append(" " + MemoryFlags.FormatSize(size).padStart(6, '\u00A0'));
+                empty_elem.appendChild(detail);
+
+                // Hide details of small regions
+                if (size < SMALL_UNALLOCATED)
+                    empty_elem.classList.add("collapse");
+
+                // Click on div to toggle collapse
+                empty_elem.addEventListener("click", ev => {
+                    ev.currentTarget.classList.toggle("collapse");
+                });
 
                 dom.appendChild(empty_elem);
             }
