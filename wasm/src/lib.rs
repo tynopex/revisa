@@ -50,3 +50,11 @@ pub unsafe fn minidump_memory_range(raw: *mut WasmBuffer) -> *mut WasmBuffer {
     let boxed = Box::new(json);
     Box::into_raw(boxed)
 }
+
+// Analyze memory data in a minidump
+#[no_mangle]
+pub unsafe fn minidump_memory_analysis(raw: *mut WasmBuffer) -> *mut WasmBuffer {
+    let json = minidump::memory_analysis_json(&*raw);
+    let boxed = Box::new(json);
+    Box::into_raw(boxed)
+}

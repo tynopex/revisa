@@ -101,58 +101,54 @@ class MinidumpViewer {
         reader.readAsArrayBuffer(file);
     }
 
-    render_memory(mem_info, mod_info, dom) {
-        // Find filenames of mapped modules
-        let mem_names = {};
-        for (let item of mod_info) {
-            mem_names[item.BaseOfImage] = item.ModuleName;
-        }
-
-        let list = document.createElement('ul');
-        let lastAllocationBase = 0;
+    render_memory(mem_info, dom) {
         let allocStripe = false;
-        for (let item of mem_info) {
-            let elem = document.createElement('li');
+        let list = document.createElement('ul');
 
-            // Track runs of entries with same AllocationBase
-            if (lastAllocationBase != item.AllocationBase)
-                allocStripe = !allocStripe;
-            lastAllocationBase = item.AllocationBase;
-            let stripeSpan = document.createElement('span');
-            stripeSpan.append('\u00A0\u00A0');
-            stripeSpan.title = item.AllocationBase.toString(16).padStart(12, '0');
-            if (allocStripe)
-                stripeSpan.className = "alt";
-            elem.append(stripeSpan);
+        for (let alloc of mem_info) {
+            // Alternate stripe per allocation region
+            allocStripe = !allocStripe;
 
-            elem.append(item.BaseAddress.toString(16).padStart(12, '0'));
-            elem.append(" " + MemoryFlags.FormatSize(item.RegionSize).padStart(6, '\u00A0'));
-            elem.append(" " + MemoryFlags.FormatProtect(item.Protect));
+            for (let item of alloc.Regions) {
+                let elem = document.createElement('li');
 
-            // Memory state sets CSS class
-            if (item.State == MemoryFlags.MEM_COMMIT) {
-                elem.className = "commit";
-            } else if (item.State == MemoryFlags.MEM_FREE) {
-                elem.className = "free";
-            } else if (item.State == MemoryFlags.MEM_RESERVE) {
-                elem.className = "reserve";
-            } else {
-                elem.className = "unknown";
-            }
+                let stripeSpan = document.createElement('span');
+                stripeSpan.append('\u00A0\u00A0');
+                stripeSpan.title = alloc.AllocationBase.toString(16).padStart(12, '0');
+                if (allocStripe)
+                    stripeSpan.className = "alt";
+                elem.append(stripeSpan);
 
-            // Mark regions that are part of image
-            if (item.Type & MemoryFlags.MEM_IMAGE) {
-                elem.className += " image";
+                elem.append(item.BaseAddress.toString(16).padStart(12, '0'));
+                elem.append(" " + MemoryFlags.FormatSize(item.RegionSize).padStart(6, '\u00A0'));
+                elem.append(" " + MemoryFlags.FormatProtect(item.Protect));
 
-                // Add image filename
-                if (item.BaseAddress in mem_names) {
-                    elem.append('\u00A0');
-                    elem.append(mem_names[item.BaseAddress]);
+                // Memory state sets CSS class
+                if (item.State == MemoryFlags.MEM_COMMIT) {
+                    elem.className = "commit";
+                } else if (item.State == MemoryFlags.MEM_FREE) {
+                    elem.className = "free";
+                } else if (item.State == MemoryFlags.MEM_RESERVE) {
+                    elem.className = "reserve";
+                } else {
+                    elem.className = "unknown";
                 }
-            }
 
-            list.appendChild(elem);
+                // Mark regions that are part of image
+                if (item.Type & MemoryFlags.MEM_IMAGE) {
+                    elem.className += " image";
+
+                    // Add image filename
+                    if (item.BaseAddress == alloc.AllocationBase) {
+                        if (alloc.ModuleName)
+                            elem.append('\u00A0' + alloc.ModuleName);
+                    }
+                }
+
+                list.appendChild(elem);
+            }
         }
+
         dom.appendChild(list);
     }
 
@@ -181,9 +177,8 @@ class MinidumpViewer {
 
         let mem_dom = document.createElement('div');
         mem_dom.className = "meminfo";
-        let mod_info = JSON.parse(result.module_info);
         let mem_info = JSON.parse(result.memory_info);
-        this.render_memory(mem_info, mod_info, mem_dom);
+        this.render_memory(mem_info, mem_dom);
         this.body.append(mem_dom);
 
         let memdata_dom = document.createElement('div');
