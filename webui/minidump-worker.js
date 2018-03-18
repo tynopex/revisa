@@ -53,18 +53,8 @@ class MinidumpProcessor {
         return json;
     }
 
-    wasm_memory_info(wasm_buf) {
-        let res = wasm.exports.minidump_memory_info(wasm_buf);
-        return this.wasm_to_json(res);
-    }
-
-    wasm_module_info(wasm_buf) {
-        let res = wasm.exports.minidump_module(wasm_buf);
-        return this.wasm_to_json(res);
-    }
-
-    wasm_memory_range(wasm_buf) {
-        let res = wasm.exports.minidump_memory_range(wasm_buf);
+    wasm_memory_overlay(wasm_buf) {
+        let res = wasm.exports.minidump_memory_overlay(wasm_buf);
         return this.wasm_to_json(res);
     }
 
@@ -80,7 +70,7 @@ class MinidumpProcessor {
         // Run analysis
         let magic = this.get_magic(data);
         let memory_info = this.wasm_memory_analysis(wasm_buf);
-        let memory_range = this.wasm_memory_range(wasm_buf);
+        let memory_range = this.wasm_memory_overlay(wasm_buf);
 
         // Release WASM memory
         wasm.exports.buffer_free(wasm_buf);
