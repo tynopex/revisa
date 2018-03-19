@@ -15,12 +15,7 @@ fn main() {
     }
 
     {
-        let x = revisa_minidump::memory_info_json(&buf);
-        let _json = String::from_utf8(x).expect("bad UTF-8");
-    }
-
-    {
-        let x = revisa_minidump::memory_range_json(&buf);
+        let x = revisa_minidump::memory_overlay_json(&buf);
         let _json = String::from_utf8(x).expect("bad UTF-8");
     }
 
