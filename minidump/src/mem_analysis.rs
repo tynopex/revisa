@@ -22,9 +22,17 @@ pub struct AllocationRegion {
     pub Regions: Vec<ProtectionRegion>,
 }
 
-// Windows Memory Constants
+// Page State
+const MEM_COMMIT: u32 = 0x00001000;
+const MEM_RESERVE: u32 = 0x00002000;
 const MEM_FREE: u32 = 0x00010000;
+
+// Page Type
+const MEM_PRIVATE: u32 = 0x00020000;
+const MEM_MAPPED: u32 = 0x00040000;
 const MEM_IMAGE: u32 = 0x01000000;
+
+// Page Protection
 const PAGE_NOACCESS: u32 = 0x00000001;
 
 // Group memory regions by allocation region
@@ -67,6 +75,8 @@ fn find_allocation_regions(meminfo: &[MemoryInfo]) -> Vec<AllocationRegion> {
             assert!(info.AllocationBase == current.AllocationBase);
             assert!(info.AllocationProtect == current.AllocationProtect);
             assert!(info.BaseAddress == current.AllocationBase + current.AllocationSize);
+            assert!(info.State == MEM_COMMIT || info.State == MEM_RESERVE);
+            assert!(info.Type == MEM_IMAGE || info.Type == MEM_MAPPED || info.Type == MEM_PRIVATE);
 
             let protect_region = ProtectionRegion {
                 BaseAddress: info.BaseAddress,

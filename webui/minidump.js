@@ -137,7 +137,7 @@ class MinidumpViewer {
 
                 // <div> for the allocation region
                 let alloc_elem = document.createElement('div');
-                alloc_elem.className = "dealloc";
+                alloc_elem.className = "free";
                 this.make_collapsable(alloc_elem, default_collapse);
 
                 // <div> for the protection region
@@ -167,8 +167,6 @@ class MinidumpViewer {
                 // Memory state sets CSS class
                 if (item.State == MemoryFlags.MEM_COMMIT) {
                     elem.className = "commit";
-                } else if (item.State == MemoryFlags.MEM_FREE) {
-                    elem.className = "free";
                 } else if (item.State == MemoryFlags.MEM_RESERVE) {
                     elem.className = "reserve";
                 } else {

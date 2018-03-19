@@ -31,25 +31,25 @@
     display: none;
 }
 
-#revisa .minidump .meminfo div.dealloc.collapse {
+#revisa .minidump .meminfo div.free.collapse {
     background-color: #CCC;
     padding-top: 0.25em;
     padding-bottom: 0.25em;
 }
-#revisa .minidump .meminfo div.dealloc.collapse * {
+#revisa .minidump .meminfo div.free.collapse * {
     display: none;
 }
 
-#revisa .minidump .meminfo div.free {
+#revisa .minidump .meminfo div.free div {
     background-color: #CCC;
 }
-#revisa .minidump .meminfo div.commit {
+#revisa .minidump .meminfo div div.commit {
     background-color: #CEC;
 }
-#revisa .minidump .meminfo div.reserve {
+#revisa .minidump .meminfo div div.reserve {
     background-color: #DFD;
 }
-#revisa .minidump .meminfo div.unknown {
+#revisa .minidump .meminfo div div.unknown {
     background-color: #F88;
 }
 
