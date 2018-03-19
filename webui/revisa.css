@@ -9,42 +9,46 @@
     padding-left: 2em;
 }
 
-#revisa .minidump .meminfo div.alloc {
+#revisa .minidump .meminfo > div {
     background-color: #EEF;
 }
-
-#revisa .minidump .meminfo div.alt {
+#revisa .minidump .meminfo > div:nth-of-type(odd) {
     background-color: #DDF;
 }
 
-#revisa .minidump .meminfo div.collapse div:not(.folded) {
+#revisa .minidump .meminfo > div:not(.collapse) {
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+}
+
+#revisa .minidump .meminfo div.alloc .range {
+    padding-right: 1ch;
+}
+#revisa .minidump .meminfo div.alloc:not(.collapse) > .range {
+    display: none;
+}
+#revisa .minidump .meminfo div.alloc.collapse > :not(.range) {
     display: none;
 }
 
-#revisa .minidump .meminfo div:not(.collapse) div.folded {
+#revisa .minidump .meminfo div.dealloc.collapse {
+    background-color: #CCC;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+}
+#revisa .minidump .meminfo div.dealloc.collapse * {
     display: none;
 }
 
 #revisa .minidump .meminfo div.free {
     background-color: #CCC;
 }
-
-#revisa .minidump .meminfo div.free.collapse {
-    height: 0.25em;
-}
-
-#revisa .minidump .meminfo div.free.collapse * {
-    display: none;
-}
-
 #revisa .minidump .meminfo div.commit {
     background-color: #CEC;
 }
-
 #revisa .minidump .meminfo div.reserve {
     background-color: #DFD;
 }
-
 #revisa .minidump .meminfo div.unknown {
     background-color: #F88;
 }

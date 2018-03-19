@@ -101,61 +101,61 @@ class MinidumpViewer {
         reader.readAsArrayBuffer(file);
     }
 
+    render_allocation_range(alloc, dom) {
+        let elem = document.createElement('span');
+        elem.className = "range";
+        elem.append(alloc.AllocationBase.toString(16)
+                                        .padStart(12, '0'));
+        elem.append(" ");
+        elem.append(MemoryFlags.FormatSize(alloc.AllocationSize)
+                               .padStart(6, '\u00A0'));
+        dom.appendChild(elem);
+    }
+
+    make_collapsable(elem, default_collapse = false) {
+        if (default_collapse)
+            elem.classList.add("collapse");
+
+        elem.addEventListener("click", ev => {
+            ev.currentTarget.classList.toggle("collapse");
+        });
+    }
+
     render_memory(mem_info, dom) {
-        let allocStripe = false;
         let prev_limit = 0;
 
-        // Threshold for unallocated regions to be rendered compact
-        const SMALL_UNALLOCATED = 1024 * 1024;
-
         for (let alloc of mem_info) {
-            // Add div if there is free address space between allocations.
+            // Detect free space between allocations
             if (alloc.AllocationBase > prev_limit) {
-                let base = prev_limit;
-                let size = alloc.AllocationBase - prev_limit;
+                let fake_alloc = {
+                    AllocationBase: prev_limit,
+                    AllocationSize: alloc.AllocationBase - prev_limit,
+                };
 
-                let empty_elem = document.createElement('div');
-                empty_elem.className = "free";
+                // Default-collapse entries under 1MB
+                let default_collapse = (fake_alloc.AllocationSize < 1024*1024);
 
-                let detail = document.createElement('span');
-                detail.append(base.toString(16).padStart(12, '0'));
-                detail.append(" " + MemoryFlags.FormatSize(size).padStart(6, '\u00A0'));
-                empty_elem.appendChild(detail);
+                // <div> for the allocation region
+                let alloc_elem = document.createElement('div');
+                alloc_elem.className = "dealloc";
+                this.make_collapsable(alloc_elem, default_collapse);
 
-                // Hide details of small regions
-                if (size < SMALL_UNALLOCATED)
-                    empty_elem.classList.add("collapse");
+                // <div> for the protection region
+                let elem = document.createElement('div');
+                elem.className = "free";
+                this.render_allocation_range(fake_alloc, elem);
 
-                // Click on div to toggle collapse
-                empty_elem.addEventListener("click", ev => {
-                    ev.currentTarget.classList.toggle("collapse");
-                });
-
-                dom.appendChild(empty_elem);
+                alloc_elem.appendChild(elem);
+                dom.appendChild(alloc_elem);
             }
             prev_limit = alloc.AllocationBase + alloc.AllocationSize;
 
-            // Alternate stripe per allocation region
-            allocStripe = !allocStripe;
-
             let alloc_elem = document.createElement('div');
             alloc_elem.className = "alloc";
-            if (allocStripe)
-                alloc_elem.classList.add("alt");
-
-            // Collapsed form
-            let folded_elem = document.createElement('div');
-            folded_elem.className = "folded";
-            folded_elem.append(alloc.AllocationBase.toString(16).padStart(12, '0'));
-            folded_elem.append(" " + MemoryFlags.FormatSize(alloc.AllocationSize).padStart(6, '\u00A0'));
+            this.render_allocation_range(alloc, alloc_elem);
+            this.make_collapsable(alloc_elem);
             if (alloc.ModuleName)
-                folded_elem.append('\u00A0' + alloc.ModuleName);
-            alloc_elem.appendChild(folded_elem);
-
-            // Click on div to toggle collapse
-            alloc_elem.addEventListener("click", ev => {
-                ev.currentTarget.classList.toggle("collapse");
-            });
+                alloc_elem.append(alloc.ModuleName);
 
             for (let item of alloc.Regions) {
                 let elem = document.createElement('div');
@@ -173,17 +173,6 @@ class MinidumpViewer {
                     elem.className = "reserve";
                 } else {
                     elem.className = "unknown";
-                }
-
-                // Mark regions that are part of image
-                if (item.Type & MemoryFlags.MEM_IMAGE) {
-                    elem.className += " image";
-
-                    // Add image filename
-                    if (item.BaseAddress == alloc.AllocationBase) {
-                        if (alloc.ModuleName)
-                            elem.append('\u00A0' + alloc.ModuleName);
-                    }
                 }
 
                 alloc_elem.appendChild(elem);
