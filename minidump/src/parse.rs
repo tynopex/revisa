@@ -319,7 +319,7 @@ pub fn parse_memory_list<'a>(
     vec.reserve(NumberOfMemoryRanges as usize);
     for i in 0..NumberOfMemoryRanges {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry, _) = memory_range(&raw[offset..])?;
+        let (entry, _) = memory_range(&raw[offset..])?;
 
         vec.push(entry);
     }
@@ -380,7 +380,7 @@ pub fn parse_memory64_list<'a>(
     vec.reserve(NumberOfMemoryRanges as usize);
     for i in 0..NumberOfMemoryRanges {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry, _) = memory_range64(&raw[offset..], BaseRva)?;
+        let (entry, _) = memory_range64(&raw[offset..], BaseRva)?;
 
         // Memory64 data is stored contiguously at end of file so RVA of a chunk
         // is BaseRva plus size of all chunks before.
@@ -450,7 +450,7 @@ pub fn parse_thread_list<'a>(
     vec.reserve(NumberOfThreads as usize);
     for i in 0..NumberOfThreads {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry, _) = thread(&raw[offset..])?;
+        let (entry, _) = thread(&raw[offset..])?;
 
         vec.push(entry);
     }
