@@ -5,9 +5,9 @@ extern crate byteorder;
 extern crate serde;
 extern crate serde_json;
 
+mod mem_analysis;
 mod parse;
 mod types;
-mod mem_analysis;
 
 use types::StreamType;
 

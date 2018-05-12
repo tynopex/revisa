@@ -1,7 +1,7 @@
 extern crate revisa_minidump;
 
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 
 fn main() {
     let mut buf: Vec<u8> = Vec::new();
