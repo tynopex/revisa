@@ -74,10 +74,11 @@ fn directory_entry(data: ParseData) -> ParseResult<Directory> {
         MINIDUMP_LOCATION_DESCRIPTOR    Location;
     } */
 
-    let (loc, remain) = location(&data[4..])?;
+    let (raw, remain) = take(data, 4)?;
+    let (loc, remain) = location(remain)?;
 
     let directory = Directory {
-        StreamType: LittleEndian::read_u32(&data[0..4]),
+        StreamType: LittleEndian::read_u32(&raw[0..4]),
         Location: loc,
     };
 
@@ -277,11 +278,11 @@ fn memory_range(data: ParseData) -> ParseResult<OverlayDescriptor> {
         MINIDUMP_LOCATION_DESCRIPTOR    Memory;
     } */
 
-    let StartOfMemoryRange = LittleEndian::read_u64(&data[0..8]);
-    let (loc, remain) = location(&data[8..])?;
+    let (raw, remain) = take(data, 8)?;
+    let (loc, remain) = location(remain)?;
 
     let range = OverlayDescriptor {
-        Address: StartOfMemoryRange,
+        Address: LittleEndian::read_u64(&raw[0..8]),
         Location: loc,
     };
 
