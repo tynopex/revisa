@@ -10,12 +10,9 @@
                 "command": "cmd /C generate.bat"
             },
             "linux": {
-                "command": "sh generate.sh "
+                "command": "sh generate.sh"
             },
             "group": "build",
-            "options": {
-                "cwd": "${workspaceRoot}/wasm"
-            },
             "problemMatcher": [
                 "$rustc"
             ]

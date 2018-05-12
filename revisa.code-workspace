@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "minidump"
+		},
+		{
+			"path": "wasm"
+		},
+		{
+			"path": "webui"
+		}
+	],
+	"settings": {}
+}
