@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
-use types::{Directory, Header, LocationDescriptor, MemoryInfo, Module, OverlayDescriptor};
+use types::{Directory, Header, LocationDescriptor, MemoryInfo, Module, OverlayDescriptor, Thread};
 
 pub type ParseData<'a> = &'a [u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
@@ -385,6 +385,72 @@ pub fn parse_memory64_list<'a>(
         // Memory64 data is stored contiguously at end of file so RVA of a chunk
         // is BaseRva plus size of all chunks before.
         BaseRva += entry.Location.Length;
+
+        vec.push(entry);
+    }
+
+    Ok((vec, data))
+}
+
+fn thread(data: ParseData) -> ParseResult<Thread> {
+    /* struct MINIDUMP_THREAD {
+        ULONG32                         ThreadId;
+        ULONG32                         SuspendCount;
+        ULONG32                         PriorityClass;
+        ULONG32                         Priority;
+        ULONG64                         Teb;
+        MINIDUMP_MEMORY_DESCRIPTOR      Stack;
+        MINIDUMP_LOCATION_DESCRIPTOR    ThreadContext;
+    } */
+
+    let (raw, remain) = take(data, 24)?;
+    let (stack, remain) = memory_range(remain)?;
+    let (context, remain) = location(remain)?;
+
+    let thread = Thread {
+        ThreadId: LittleEndian::read_u32(&raw[0..4]),
+        SuspendCount: LittleEndian::read_u32(&raw[4..8]),
+        PriorityClass: LittleEndian::read_u32(&raw[8..12]),
+        Priority: LittleEndian::read_u32(&raw[12..16]),
+        Teb: LittleEndian::read_u64(&raw[16..24]),
+        Stack: stack,
+        ThreadContext: context,
+    };
+
+    Ok((thread, remain))
+}
+
+pub fn parse_thread_list<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, Vec<Thread>> {
+    /* struct MINIDUMP_THREAD_LIST {
+        ULONG32 NumberOfThreads;
+    } */
+
+    let mut vec = Vec::new();
+
+    let offset = loc.Offset as usize;
+    if offset > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[offset..];
+
+    let SizeOfHeader = 4; // Packed header size
+    let SizeOfEntry = 48; // Packed MINIDUMP_THREAD size
+    let NumberOfThreads = LittleEndian::read_u32(&raw[0..4]) as u64;
+
+    if NumberOfThreads > u32::max_value() as u64 {
+        return Err("Unexpected number of threads");
+    }
+    if SizeOfHeader + NumberOfThreads * SizeOfEntry != loc.Length {
+        return Err("Unexpected Stream size");
+    }
+
+    vec.reserve(NumberOfThreads as usize);
+    for i in 0..NumberOfThreads {
+        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
+        let (mut entry, _) = thread(&raw[offset..])?;
 
         vec.push(entry);
     }

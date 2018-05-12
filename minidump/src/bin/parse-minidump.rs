@@ -24,5 +24,10 @@ fn main() {
         let _json = String::from_utf8(x).expect("bad UTF-8");
     }
 
+    {
+        let x = revisa_minidump::thread_list_json(&buf);
+        let _json = String::from_utf8(x).expect("bad UTF-8");
+    }
+
     println!("Parse Complete");
 }

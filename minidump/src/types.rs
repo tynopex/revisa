@@ -70,3 +70,14 @@ pub struct Module {
 
     pub ModuleName: Option<String>,
 }
+
+#[derive(Serialize)]
+pub struct Thread {
+    pub ThreadId: u32,
+    pub SuspendCount: u32,
+    pub PriorityClass: u32,
+    pub Priority: u32,
+    pub Teb: u64,
+    pub Stack: OverlayDescriptor,
+    pub ThreadContext: LocationDescriptor,
+}

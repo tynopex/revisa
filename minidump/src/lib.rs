@@ -47,3 +47,24 @@ pub fn memory_analysis_json(dump: &[u8]) -> Vec<u8> {
 
     serde_json::to_vec(&analysis).expect("Serializing failed")
 }
+
+// Find list of threads and return as JSON
+pub fn thread_list_json(dump: &[u8]) -> Vec<u8> {
+    let header = parse::parse_header(&dump)
+        .map(|(h, _)| h)
+        .expect("Failed to parse minidump::Header");
+
+    let dir = parse::parse_directory(&dump, &header)
+        .map(|(d, _)| d)
+        .expect("Failed to parse minidump Directory list");
+
+    let threadlist = dir.iter()
+        .find(|&el| el.StreamType == StreamType::ThreadListStream as u32)
+        .expect("Unable to find thread list");
+
+    let threads = parse::parse_thread_list(dump, &threadlist.Location)
+        .map(|(v, _)| v)
+        .unwrap();
+
+    serde_json::to_vec(&threads).expect("Serializing failed")
+}
