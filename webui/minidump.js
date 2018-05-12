@@ -203,10 +203,13 @@ class MinidumpViewer {
         let threads = Array.from(thread_list);
 
         for (let item of threads) {
+            let pc = item.Context.type == "X86" ? item.Context.Eip
+                                                : item.Context.Rip;
+
             let elem = document.createElement('li');
             elem.append('\u00A0\u00A0');
-            elem.append("Thread[" + item.ThreadId.toString().padStart(5, 'u00A0') + "]");
-            elem.append(" " + item.Context.Rip.toString(16).padStart(12, '0'));
+            elem.append("Thread[" + item.ThreadId.toString().padStart(5, '\u00A0') + "]");
+            elem.append(" " + pc.toString(16).padStart(12, '0'));
 
             list.appendChild(elem);
         }

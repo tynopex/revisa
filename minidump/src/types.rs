@@ -72,6 +72,20 @@ pub struct Module {
 }
 
 #[derive(Serialize)]
+pub struct ContextX86 {
+    pub EFlags: u32,
+    pub Eip: u32,
+    pub Eax: u32,
+    pub Ebx: u32,
+    pub Ecx: u32,
+    pub Edx: u32,
+    pub Esp: u32,
+    pub Ebp: u32,
+    pub Esi: u32,
+    pub Edi: u32,
+}
+
+#[derive(Serialize)]
 pub struct ContextX64 {
     pub EFlags: u32,
     pub Rip: u64,
@@ -94,6 +108,14 @@ pub struct ContextX64 {
 }
 
 #[derive(Serialize)]
+#[serde(tag = "type")]
+pub enum MaybeThreadContext {
+    None,
+    X86(ContextX86),
+    X64(ContextX64),
+}
+
+#[derive(Serialize)]
 pub struct Thread {
     pub ThreadId: u32,
     pub SuspendCount: u32,
@@ -103,5 +125,5 @@ pub struct Thread {
     pub Stack: OverlayDescriptor,
     pub ThreadContext: LocationDescriptor,
 
-    pub Context: Option<ContextX64>,
+    pub Context: MaybeThreadContext,
 }

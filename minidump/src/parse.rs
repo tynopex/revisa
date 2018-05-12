@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
-use types::{ContextX64, Directory, Header, LocationDescriptor, MemoryInfo, Module,
-            OverlayDescriptor, Thread};
+use types::{ContextX64, ContextX86, Directory, Header, LocationDescriptor, MaybeThreadContext,
+            MemoryInfo, Module, OverlayDescriptor, Thread};
 
 pub type ParseData<'a> = &'a [u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
@@ -35,6 +35,7 @@ macro_rules! define_array_T {
     };
 }
 
+define_array_T!(array_u32, u32, LittleEndian::read_u32);
 define_array_T!(array_u64, u64, LittleEndian::read_u64);
 
 pub fn parse_header(data: ParseData) -> ParseResult<Header> {
@@ -439,13 +440,74 @@ fn thread(data: ParseData) -> ParseResult<Thread> {
         Stack: stack,
         ThreadContext: context,
 
-        Context: None,
+        Context: MaybeThreadContext::None,
     };
 
     Ok((thread, remain))
 }
 
-pub fn parse_thread_context64<'a>(
+pub fn parse_thread_context_x86<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, ContextX86> {
+    /* struct CONTEXT {
+        DWORD               ContextFlags;
+
+        // +0004: Debug registers
+        DWORD               Dr0, Dr1, Dr2, Dr3, Dr6, Dr7;
+
+        // +0028: Floating point state
+        FLOATING_SAVE_AREA  FloatSave;
+
+        // +0140: Segment Registers
+        DWORD               SegGs, SegFs, SegEs, SegDs;
+
+        // +0156: Integer registers
+        DWORD               Edi, Esi, Ebx, Edx, Ecx, Eax;
+
+        // +0180: Program counter, stack registers, and flags
+        DWORD               Ebp;
+        DWORD               Eip;
+        DWORD               SegCs;
+        DWORD               EFlags;
+        DWORD               Esp;
+        DWORD               SegSs;
+
+        // +0204: Additional registers
+        BYTE                ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
+    } */
+
+    let offset = loc.Offset as usize;
+    if offset > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[offset..];
+
+    let SizeOfHeader = 716;
+    if SizeOfHeader != loc.Length {
+        return Err("Unexpected Stream size");
+    }
+
+    let (regs, _) = array_u32(&raw[156..204], 12)?;
+
+    // NOTE: Fields listed in parse order
+    let context = ContextX86 {
+        Edi: regs[0],
+        Esi: regs[1],
+        Ebx: regs[2],
+        Edx: regs[3],
+        Ecx: regs[4],
+        Eax: regs[5],
+        Ebp: regs[6],
+        Eip: regs[7],
+        EFlags: regs[9],
+        Esp: regs[10],
+    };
+
+    Ok((context, data))
+}
+
+pub fn parse_thread_context_x64<'a>(
     data: ParseData<'a>,
     loc: &LocationDescriptor,
 ) -> ParseResult<'a, ContextX64> {
@@ -557,10 +619,16 @@ pub fn parse_thread_list<'a>(
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
         let (mut entry, _) = thread(&raw[offset..])?;
 
+        // Decode X86 CONTEXT
+        if entry.ThreadContext.Length == 716 {
+            let (context, _) = parse_thread_context_x86(&data, &entry.ThreadContext)?;
+            entry.Context = MaybeThreadContext::X86(context);
+        }
+
         // Decode X64 CONTEXT
         if entry.ThreadContext.Length == 1232 {
-            let (context, _) = parse_thread_context64(&data, &entry.ThreadContext)?;
-            entry.Context = Some(context);
+            let (context, _) = parse_thread_context_x64(&data, &entry.ThreadContext)?;
+            entry.Context = MaybeThreadContext::X64(context);
         }
 
         vec.push(entry);
