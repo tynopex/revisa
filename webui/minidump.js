@@ -190,7 +190,7 @@ class MinidumpViewer {
             let elem = document.createElement('li');
             elem.append('\u00A0\u00A0');
             elem.append(item.Address.toString(16).padStart(12, '0'));
-            elem.append(" " + item.Location.Length.toString().padStart(6, '\u00A0'));
+            elem.append(" " + item.Location.Length.toString().padStart(8, '\u00A0'));
 
             list.appendChild(elem);
         }
@@ -205,7 +205,8 @@ class MinidumpViewer {
         for (let item of threads) {
             let elem = document.createElement('li');
             elem.append('\u00A0\u00A0');
-            elem.append("Thread[" + item.ThreadId + "]");
+            elem.append("Thread[" + item.ThreadId.toString().padStart(5, 'u00A0') + "]");
+            elem.append(" " + item.Context.Rip.toString(16).padStart(12, '0'));
 
             list.appendChild(elem);
         }

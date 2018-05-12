@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
-use types::{Directory, Header, LocationDescriptor, MemoryInfo, Module, OverlayDescriptor, Thread};
+use types::{ContextX64, Directory, Header, LocationDescriptor, MemoryInfo, Module,
+            OverlayDescriptor, Thread};
 
 pub type ParseData<'a> = &'a [u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
@@ -13,6 +14,28 @@ fn take(data: ParseData, len: usize) -> ParseResult<ParseData> {
         return Ok(data.split_at(len));
     }
 }
+
+macro_rules! define_array_T {
+    ($fn_name:ident, $type:ident, $reader_fn:expr) => {
+        fn $fn_name(data: ParseData, count: usize) -> ParseResult<Vec<$type>> {
+            use std::mem::size_of;
+
+            let mut v = Vec::with_capacity(count);
+            let size = size_of::<$type>();
+            let (raw, remain) = take(data, count * size)?;
+
+            for i in 0..count {
+                let ofs = i * size;
+                let val = $reader_fn(&raw[ofs..ofs + size]);
+                v.push(val);
+            }
+
+            Ok((v, remain))
+        }
+    };
+}
+
+define_array_T!(array_u64, u64, LittleEndian::read_u64);
 
 pub fn parse_header(data: ParseData) -> ParseResult<Header> {
     /* struct MINIDUMP_HEADER {
@@ -415,9 +438,91 @@ fn thread(data: ParseData) -> ParseResult<Thread> {
         Teb: LittleEndian::read_u64(&raw[16..24]),
         Stack: stack,
         ThreadContext: context,
+
+        Context: None,
     };
 
     Ok((thread, remain))
+}
+
+pub fn parse_thread_context64<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, ContextX64> {
+    /* struct CONTEXT {
+        // +0000: Register parameter home addresses
+        DWORD64         P1Home, P2Home, P3Home, P4Home, P5Home, P6Home;
+
+        // +0048: Control flags
+        DWORD           ContextFlags;
+        DWORD           MxCsr;
+
+        // +0056: Segment Registers and processor flags
+        WORD            SegCs, SegDs, SegEs, SegFs, SegGs, SegSs;
+        DWORD           EFlags;
+
+        // +0072: Debug registers
+        DWORD64         Dr0, Dr1, Dr2, Dr3, Dr6, Dr7;
+
+        // +0120: Integer registers
+        DWORD64         Rax, Rcx, Rdx, Rbx, Rsp, Rbp, Rsi, Rdi;
+        DWORD64         R8, R9, R10, R11, R12, R13, R14, R15;
+
+        // +0248: Program counter
+        DWORD64         Rip;
+
+        // +0256: Floating point state
+        XMM_SAVE_AREA32 FltSave; // 512-Byte
+
+        // +0768: Vector registers
+        M128A           VectorRegister[26];
+        DWORD64         VectorControl;
+
+        // +1192: Special debug control registers
+        DWORD64         DebugControl;
+        DWORD64         LastBranchToRip;
+        DWORD64         LastBranchFromRip;
+        DWORD64         LastExceptionToRip;
+        DWORD64         LastExceptionFromRip;
+    } */
+
+    let offset = loc.Offset as usize;
+    if offset > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[offset..];
+
+    let SizeOfHeader = 1232;
+    if SizeOfHeader != loc.Length {
+        return Err("Unexpected Stream size");
+    }
+
+    let eflags = LittleEndian::read_u32(&raw[68..72]);
+    let (regs, _) = array_u64(&raw[120..256], 17)?;
+
+    // NOTE: Fields listed in parse order
+    let context = ContextX64 {
+        EFlags: eflags,
+        Rax: regs[0],
+        Rcx: regs[1],
+        Rdx: regs[2],
+        Rbx: regs[3],
+        Rsp: regs[4],
+        Rbp: regs[5],
+        Rsi: regs[6],
+        Rdi: regs[7],
+        R8: regs[8],
+        R9: regs[9],
+        R10: regs[10],
+        R11: regs[11],
+        R12: regs[12],
+        R13: regs[13],
+        R14: regs[14],
+        R15: regs[15],
+        Rip: regs[16],
+    };
+
+    Ok((context, data))
 }
 
 pub fn parse_thread_list<'a>(
@@ -450,7 +555,13 @@ pub fn parse_thread_list<'a>(
     vec.reserve(NumberOfThreads as usize);
     for i in 0..NumberOfThreads {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (entry, _) = thread(&raw[offset..])?;
+        let (mut entry, _) = thread(&raw[offset..])?;
+
+        // Decode X64 CONTEXT
+        if entry.ThreadContext.Length == 1232 {
+            let (context, _) = parse_thread_context64(&data, &entry.ThreadContext)?;
+            entry.Context = Some(context);
+        }
 
         vec.push(entry);
     }

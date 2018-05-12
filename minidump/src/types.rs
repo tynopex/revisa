@@ -72,6 +72,28 @@ pub struct Module {
 }
 
 #[derive(Serialize)]
+pub struct ContextX64 {
+    pub EFlags: u32,
+    pub Rip: u64,
+    pub Rax: u64,
+    pub Rbx: u64,
+    pub Rcx: u64,
+    pub Rdx: u64,
+    pub Rsp: u64,
+    pub Rbp: u64,
+    pub Rsi: u64,
+    pub Rdi: u64,
+    pub R8: u64,
+    pub R9: u64,
+    pub R10: u64,
+    pub R11: u64,
+    pub R12: u64,
+    pub R13: u64,
+    pub R14: u64,
+    pub R15: u64,
+}
+
+#[derive(Serialize)]
 pub struct Thread {
     pub ThreadId: u32,
     pub SuspendCount: u32,
@@ -80,4 +102,6 @@ pub struct Thread {
     pub Teb: u64,
     pub Stack: OverlayDescriptor,
     pub ThreadContext: LocationDescriptor,
+
+    pub Context: Option<ContextX64>,
 }
