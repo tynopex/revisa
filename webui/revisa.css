@@ -56,3 +56,7 @@
 #revisa .minidump .memdata {
     font-family: monospace;
 }
+
+#revisa .minidump .threads {
+    font-family: monospace;
+}

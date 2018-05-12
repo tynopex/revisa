@@ -42,3 +42,11 @@ pub unsafe fn minidump_memory_analysis(raw: *mut WasmBuffer) -> *mut WasmBuffer 
     let boxed = Box::new(json);
     Box::into_raw(boxed)
 }
+
+// Find thread list in a minidump
+#[no_mangle]
+pub unsafe fn minidump_thread_list(raw: *mut WasmBuffer) -> *mut WasmBuffer {
+    let json = minidump::thread_list_json(&*raw);
+    let boxed = Box::new(json);
+    Box::into_raw(boxed)
+}

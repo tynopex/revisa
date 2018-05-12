@@ -197,6 +197,21 @@ class MinidumpViewer {
         dom.appendChild(list);
     }
 
+    render_thread_list(thread_list, dom) {
+        let list = document.createElement('ul');
+
+        let threads = Array.from(thread_list);
+
+        for (let item of threads) {
+            let elem = document.createElement('li');
+            elem.append('\u00A0\u00A0');
+            elem.append("Thread[" + item.ThreadId + "]");
+
+            list.appendChild(elem);
+        }
+        dom.appendChild(list);
+    }
+
     show_result(result) {
         this.body.innerHTML = "";
         this.body.append("Header Signature: " + result.magic);
@@ -214,6 +229,12 @@ class MinidumpViewer {
         let mem_range = JSON.parse(result.memory_range);
         this.render_memory_range(mem_range, memdata_dom);
         this.body.append(memdata_dom);
+
+        let threads_dom = document.createElement('div');
+        threads_dom.className = "threads";
+        let thread_list = JSON.parse(result.thread_list);
+        this.render_thread_list(thread_list, threads_dom);
+        this.body.append(threads_dom);
     }
 
     onmessage(e) {

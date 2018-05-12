@@ -63,26 +63,30 @@ class MinidumpProcessor {
         return this.wasm_to_json(res);
     }
 
+    wasm_thread_list(wasm_buf) {
+        let res = wasm.exports.minidump_thread_list(wasm_buf);
+        return this.wasm_to_json(res);
+    }
+
     process(data) {
         // Copy minidump to WASM memory
         let wasm_buf = this.data_to_wasm(data);
 
         // Run analysis
-        let magic = this.get_magic(data);
-        let memory_info = this.wasm_memory_analysis(wasm_buf);
-        let memory_range = this.wasm_memory_overlay(wasm_buf);
+        let result = {
+            'topic': 'result',
+            'magic': this.get_magic(data),
+            'bytelen': data.byteLength,
+            'memory_info': this.wasm_memory_analysis(wasm_buf),
+            'memory_range': this.wasm_memory_overlay(wasm_buf),
+            'thread_list': this.wasm_thread_list(wasm_buf),
+        };
 
         // Release WASM memory
         wasm.exports.buffer_free(wasm_buf);
 
         // Send response to caller
-        this.responder.postMessage({
-            'topic': 'result',
-            'magic': magic,
-            'bytelen': data.byteLength,
-            'memory_info': memory_info,
-            'memory_range': memory_range,
-        });
+        this.responder.postMessage(result);
     }
 }
 
