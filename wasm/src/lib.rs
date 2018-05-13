@@ -50,3 +50,11 @@ pub unsafe fn minidump_thread_list(raw: *mut WasmBuffer) -> *mut WasmBuffer {
     let boxed = Box::new(json);
     Box::into_raw(boxed)
 }
+
+// Find exception record in a minidump
+#[no_mangle]
+pub unsafe fn minidump_exception_record(raw: *mut WasmBuffer) -> *mut WasmBuffer {
+    let json = minidump::exception_record_json(&*raw);
+    let boxed = Box::new(json);
+    Box::into_raw(boxed)
+}

@@ -216,6 +216,17 @@ class MinidumpViewer {
         dom.appendChild(list);
     }
 
+    render_exception_record(item, dom) {
+        let addr = item.Exception.Address;
+
+        let elem = document.createElement('div');
+        elem.append("ExceptionRecord:");
+        elem.append(" Thread[" + item.ThreadId.toString() + "]");
+        elem.append(" FaultAddress[" + addr.toString(16).padStart(12, '0') + "]");
+
+        dom.appendChild(elem);
+    }
+
     show_result(result) {
         this.body.innerHTML = "";
         this.body.append("Header Signature: " + result.magic);
@@ -239,6 +250,12 @@ class MinidumpViewer {
         let thread_list = JSON.parse(result.thread_list);
         this.render_thread_list(thread_list, threads_dom);
         this.body.append(threads_dom);
+
+        let exception_dom = document.createElement('div');
+        exception_dom.className = "threads";
+        let exception_record = JSON.parse(result.exception_record);
+        this.render_exception_record(exception_record, exception_dom);
+        this.body.append(exception_dom);
     }
 
     onmessage(e) {
