@@ -17,7 +17,10 @@ fn take(data: ParseData, len: usize) -> ParseResult<ParseData> {
 
 macro_rules! define_array_T {
     ($fn_name:ident, $type:ident, $reader_fn:expr) => {
-        fn $fn_name(data: ParseData, count: usize) -> ParseResult<Vec<$type>> {
+        fn $fn_name<T>(data: ParseData, count: usize) -> ParseResult<Vec<T>>
+        where
+            T: From<$type>,
+        {
             use std::mem::size_of;
 
             let mut v = Vec::with_capacity(count);
@@ -27,7 +30,7 @@ macro_rules! define_array_T {
             for i in 0..count {
                 let ofs = i * size;
                 let val = $reader_fn(&raw[ofs..ofs + size]);
-                v.push(val);
+                v.push(T::from(val));
             }
 
             Ok((v, remain))
