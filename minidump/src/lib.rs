@@ -89,3 +89,24 @@ pub fn exception_record_json(dump: &[u8]) -> Vec<u8> {
 
     serde_json::to_vec(&record).expect("Serializing failed")
 }
+
+// Find system info and return as JSON
+pub fn system_info_json(dump: &[u8]) -> Vec<u8> {
+    let header = parse::parse_header(&dump)
+        .map(|(h, _)| h)
+        .expect("Failed to parse minidump::Header");
+
+    let dir = parse::parse_directory(&dump, &header)
+        .map(|(d, _)| d)
+        .expect("Failed to parse minidump Directory list");
+
+    let stream = dir.iter()
+        .find(|&el| el.StreamType == StreamType::SystemInfoStream as u32)
+        .expect("Unable to find system info");
+
+    let system_info = parse::parse_system_info(dump, &stream.Location)
+        .map(|(v, _)| v)
+        .unwrap();
+
+    serde_json::to_vec(&system_info).expect("Serializing failed")
+}

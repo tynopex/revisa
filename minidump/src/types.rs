@@ -144,3 +144,19 @@ pub struct ExceptionStream {
 
     pub Context: MaybeThreadContext,
 }
+
+#[derive(Serialize)]
+pub struct SystemInfo {
+    pub ProcessorArchitecture: u16,
+    pub ProcessorFamily: u16,
+    pub ProcessorModel: u8,
+    pub ProcessorStepping: u8,
+    pub NumberOfProcessors: u8,
+    pub MajorVersion: u32,
+    pub MinorVersion: u32,
+    pub BuildNumber: u32,
+    pub CSDVersionRva: u32,
+    pub ProcessorFeatures: Vec<u32>,
+
+    pub ServicePack: Option<String>,
+}

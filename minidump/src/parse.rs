@@ -3,7 +3,8 @@
 use byteorder::{ByteOrder, LittleEndian};
 use std::slice;
 use types::{ContextX64, ContextX86, Directory, ExceptionRecord, ExceptionStream, Header,
-            LocationDescriptor, MaybeThreadContext, MemoryInfo, Module, OverlayDescriptor, Thread};
+            LocationDescriptor, MaybeThreadContext, MemoryInfo, Module, OverlayDescriptor,
+            SystemInfo, Thread};
 
 pub type ParseData<'a> = &'a [u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
@@ -749,4 +750,60 @@ pub fn parse_exception_stream<'a>(
     };
 
     Ok((exception_stream, seek_remain))
+}
+
+pub fn parse_system_info<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, SystemInfo> {
+    /* struct MINIDUMP_SYSTEM_INFO {
+        USHORT  ProcessorArchitecture;
+        USHORT  ProcessorLevel;
+        USHORT  ProcessorRevision;
+        UCHAR   NumberOfProcessors;
+        UCHAR   ProductType;
+        ULONG32 MajorVersion;
+        ULONG32 MinorVersion;
+        ULONG32 BuildNumber;
+        ULONG32 PlatformId;
+        RVA     CSDVersionRva;
+        USHORT  SuiteMask;
+        USHORT  Reserved2;
+        ULONG32 ProcessorFeatures[6];
+    } */
+
+    let (seek_raw, seek_remain) = seek_stream(data, loc)?;
+
+    let SizeOfHeader = 56;
+    if SizeOfHeader != loc.Length {
+        return Err("Unexpected Stream size");
+    }
+
+    let (raw, remain) = take(seek_raw, 32)?;
+    let (features, _) = array_u32(remain, 6)?;
+
+    let proc_revision = LittleEndian::read_u16(&raw[4..6]);
+
+    let mut system_info = SystemInfo {
+        ProcessorArchitecture: LittleEndian::read_u16(&raw[0..2]),
+        ProcessorFamily: LittleEndian::read_u16(&raw[2..4]),
+        ProcessorModel: (proc_revision >> 8) as u8,
+        ProcessorStepping: (proc_revision & 0xFF) as u8,
+        NumberOfProcessors: raw[6],
+        MajorVersion: LittleEndian::read_u32(&raw[8..12]),
+        MinorVersion: LittleEndian::read_u32(&raw[12..16]),
+        BuildNumber: LittleEndian::read_u32(&raw[16..20]),
+        CSDVersionRva: LittleEndian::read_u32(&raw[24..28]),
+        ProcessorFeatures: features,
+
+        ServicePack: None,
+    };
+
+    // Look up service pack string
+    if system_info.CSDVersionRva > 0 {
+        let (name, _) = parse_string(data, system_info.CSDVersionRva)?;
+        system_info.ServicePack = Some(name);
+    }
+
+    Ok((system_info, seek_remain))
 }
