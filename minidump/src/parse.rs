@@ -10,9 +10,29 @@ pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
 fn take(data: ParseData, len: usize) -> ParseResult<ParseData> {
     if data.len() < len {
         return Err("Incomplete Data");
-    } else {
-        return Ok(data.split_at(len));
     }
+
+    Ok(data.split_at(len))
+}
+
+fn seek(data: ParseData, offset: usize) -> ParseResult<ParseData> {
+    if offset >= data.len() {
+        return Err("Cannot seek to data");
+    }
+    let raw = &data[offset..];
+
+    Ok(raw.split_at(raw.len()))
+}
+
+fn seek_stream<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, ParseData<'a>> {
+    let offset = loc.Offset as usize;
+    let len = loc.Length as usize;
+
+    let (seek_data, remain) = seek(data, offset)?;
+    take(seek_data, len).map(|(d, _)| (d, remain))
 }
 
 macro_rules! define_array_T {
@@ -144,14 +164,10 @@ pub fn parse_directory<'a>(
     data: ParseData<'a>,
     header: &Header,
 ) -> ParseResult<'a, Vec<Directory>> {
-    let mut vec = Vec::new();
-
     let rva = header.StreamDirectory as usize;
-    if rva > data.len() {
-        return Err("Cannot seek to StreamDirectory");
-    }
-    let mut raw = &data[rva..];
+    let (mut raw, remain) = seek(data, rva)?;
 
+    let mut vec = Vec::new();
     vec.reserve(header.NumberOfStreams as usize);
     for _ in 0..header.NumberOfStreams {
         let (entry, raw_next) = directory_entry(raw)?;
@@ -159,7 +175,7 @@ pub fn parse_directory<'a>(
         raw = raw_next;
     }
 
-    Ok((vec, data))
+    Ok((vec, remain))
 }
 
 pub fn parse_memory_info<'a>(
@@ -172,13 +188,7 @@ pub fn parse_memory_info<'a>(
         ULONG64 NumberOfEntries;
     } */
 
-    let mut vec = Vec::new();
-
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
+    let (raw, remain) = seek_stream(data, loc)?;
 
     let SizeOfHeader = LittleEndian::read_u32(&raw[0..4]) as u64;
     let SizeOfEntry = LittleEndian::read_u32(&raw[4..8]) as u64;
@@ -191,6 +201,7 @@ pub fn parse_memory_info<'a>(
         return Err("Unexpected Stream size");
     }
 
+    let mut vec = Vec::new();
     vec.reserve(NumberOfEntries as usize);
     for i in 0..NumberOfEntries {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
@@ -198,7 +209,7 @@ pub fn parse_memory_info<'a>(
         vec.push(entry);
     }
 
-    Ok((vec, data))
+    Ok((vec, remain))
 }
 
 fn module(data: ParseData) -> ParseResult<Module> {
@@ -230,29 +241,27 @@ fn module(data: ParseData) -> ParseResult<Module> {
     Ok((module, remain))
 }
 
-pub fn parse_string<'a>(data: ParseData<'a>, rva_: u32) -> ParseResult<'a, String> {
+pub fn parse_string(data: ParseData, rva: u32) -> ParseResult<String> {
     /* struct MINIDUMP_STRING {
         ULONG32 Length;
         WCHAR   Buffer[];
     } */
 
-    let rva = rva_ as usize;
-    if rva > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[rva..];
+    let (raw, remain) = seek(data, rva as usize)?;
 
-    let Length = LittleEndian::read_u32(&raw[0..4]) / 2;
+    let SizeOfHeader = 4;
+    let SizeOfEntry = 2; // sizeof WCHAR
+    let Length = LittleEndian::read_u32(&raw[0..4]) / SizeOfEntry;
 
     let mut elems = Vec::new();
     for i in 0..Length {
-        let offset = (4 + i * 2) as usize;
+        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
         let elem = LittleEndian::read_u16(&raw[offset..]);
         elems.push(elem);
     }
     let string = String::from_utf16(&elems).map_err(|_| "bad UTF-16 data")?;
 
-    Ok((string, data))
+    Ok((string, remain))
 }
 
 pub fn parse_module_list<'a>(
@@ -263,16 +272,10 @@ pub fn parse_module_list<'a>(
         ULONG32 NumberOfModules;
     } */
 
-    let mut vec = Vec::new();
+    let (raw, remain) = seek_stream(data, loc)?;
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
-
-    let SizeOfHeader = 4; // Packed header size
-    let SizeOfEntry = 108; // Packed MINIDUMP_MODULE size
+    let SizeOfHeader = 4;
+    let SizeOfEntry = 108; // sizeof MINIDUMP_MODULE
     let NumberOfModules = LittleEndian::read_u32(&raw[0..4]) as u64;
 
     if NumberOfModules > u32::max_value() as u64 {
@@ -282,6 +285,7 @@ pub fn parse_module_list<'a>(
         return Err("Unexpected Stream size");
     }
 
+    let mut vec = Vec::new();
     vec.reserve(NumberOfModules as usize);
     for i in 0..NumberOfModules {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
@@ -296,7 +300,7 @@ pub fn parse_module_list<'a>(
         vec.push(entry);
     }
 
-    Ok((vec, data))
+    Ok((vec, remain))
 }
 
 fn memory_range(data: ParseData) -> ParseResult<OverlayDescriptor> {
@@ -324,16 +328,10 @@ pub fn parse_memory_list<'a>(
         ULONG32 NumberOfMemoryRanges;
     } */
 
-    let mut vec = Vec::new();
+    let (raw, remain) = seek_stream(data, loc)?;
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
-
-    let SizeOfHeader = 4; // Packed header size
-    let SizeOfEntry = 16; // Packed MINIDUMP_MEMORY_DESCRIPTOR size
+    let SizeOfHeader = 4;
+    let SizeOfEntry = 16; // sizeof MINIDUMP_MEMORY_DESCRIPTOR
     let NumberOfMemoryRanges = LittleEndian::read_u32(&raw[0..4]) as u64;
 
     if NumberOfMemoryRanges > u32::max_value() as u64 {
@@ -343,6 +341,7 @@ pub fn parse_memory_list<'a>(
         return Err("Unexpected Stream size");
     }
 
+    let mut vec = Vec::new();
     vec.reserve(NumberOfMemoryRanges as usize);
     for i in 0..NumberOfMemoryRanges {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
@@ -351,7 +350,7 @@ pub fn parse_memory_list<'a>(
         vec.push(entry);
     }
 
-    Ok((vec, data))
+    Ok((vec, remain))
 }
 
 fn memory_range64(data: ParseData, base: u64) -> ParseResult<OverlayDescriptor> {
@@ -384,16 +383,10 @@ pub fn parse_memory64_list<'a>(
         RVA64   BaseRva;
     } */
 
-    let mut vec = Vec::new();
+    let (raw, remain) = seek_stream(data, loc)?;
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
-
-    let SizeOfHeader = 16; // Packed header size
-    let SizeOfEntry = 16; // Packed MINIDUMP_MEMORY_DESCRIPTOR64 size
+    let SizeOfHeader = 16;
+    let SizeOfEntry = 16; // sizeof MINIDUMP_MEMORY_DESCRIPTOR64
     let NumberOfMemoryRanges = LittleEndian::read_u64(&raw[0..8]);
     let mut BaseRva = LittleEndian::read_u64(&raw[8..16]);
 
@@ -404,6 +397,7 @@ pub fn parse_memory64_list<'a>(
         return Err("Unexpected Stream size");
     }
 
+    let mut vec = Vec::new();
     vec.reserve(NumberOfMemoryRanges as usize);
     for i in 0..NumberOfMemoryRanges {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
@@ -416,7 +410,7 @@ pub fn parse_memory64_list<'a>(
         vec.push(entry);
     }
 
-    Ok((vec, data))
+    Ok((vec, remain))
 }
 
 fn thread(data: ParseData) -> ParseResult<Thread> {
@@ -480,11 +474,7 @@ pub fn parse_thread_context_x86<'a>(
         BYTE                ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
     } */
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
+    let (raw, remain) = seek_stream(data, loc)?;
 
     let SizeOfHeader = 716;
     if SizeOfHeader != loc.Length {
@@ -507,7 +497,7 @@ pub fn parse_thread_context_x86<'a>(
         Esp: regs[10],
     };
 
-    Ok((context, data))
+    Ok((context, remain))
 }
 
 pub fn parse_thread_context_x64<'a>(
@@ -551,11 +541,7 @@ pub fn parse_thread_context_x64<'a>(
         DWORD64         LastExceptionFromRip;
     } */
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
+    let (raw, remain) = seek_stream(data, loc)?;
 
     let SizeOfHeader = 1232;
     if SizeOfHeader != loc.Length {
@@ -587,7 +573,7 @@ pub fn parse_thread_context_x64<'a>(
         Rip: regs[16],
     };
 
-    Ok((context, data))
+    Ok((context, remain))
 }
 
 fn thread_context<'a>(
@@ -617,16 +603,10 @@ pub fn parse_thread_list<'a>(
         ULONG32 NumberOfThreads;
     } */
 
-    let mut vec = Vec::new();
+    let (raw, remain) = seek_stream(data, loc)?;
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
-
-    let SizeOfHeader = 4; // Packed header size
-    let SizeOfEntry = 48; // Packed MINIDUMP_THREAD size
+    let SizeOfHeader = 4;
+    let SizeOfEntry = 48; // sizeof MINIDUMP_THREAD
     let NumberOfThreads = LittleEndian::read_u32(&raw[0..4]) as u64;
 
     if NumberOfThreads > u32::max_value() as u64 {
@@ -636,6 +616,7 @@ pub fn parse_thread_list<'a>(
         return Err("Unexpected Stream size");
     }
 
+    let mut vec = Vec::new();
     vec.reserve(NumberOfThreads as usize);
     for i in 0..NumberOfThreads {
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
@@ -647,7 +628,7 @@ pub fn parse_thread_list<'a>(
         vec.push(entry);
     }
 
-    Ok((vec, data))
+    Ok((vec, remain))
 }
 
 fn exception_record_32(data: ParseData) -> ParseResult<ExceptionRecord> {
@@ -730,11 +711,7 @@ pub fn parse_exception_stream<'a>(
         MINIDUMP_LOCATION_DESCRIPTOR    ThreadContext;
     } */
 
-    let offset = loc.Offset as usize;
-    if offset > data.len() {
-        return Err("Cannot seek to Stream");
-    }
-    let raw = &data[offset..];
+    let (seek_raw, seek_remain) = seek_stream(data, loc)?;
 
     let SizeOfHeader32 = 104;
     let SizeOfHeader64 = 168;
@@ -749,7 +726,8 @@ pub fn parse_exception_stream<'a>(
         exception_record_64
     };
 
-    let (exception_record, remain) = exception_record_fn(&raw[8..])?;
+    let (raw, remain) = take(seek_raw, 8)?;
+    let (exception_record, remain) = exception_record_fn(remain)?;
     let (context_loc, _) = location(remain)?;
 
     let (context, _) = thread_context(data, &context_loc)?;
@@ -762,5 +740,5 @@ pub fn parse_exception_stream<'a>(
         Context: context,
     };
 
-    Ok((exception_stream, data))
+    Ok((exception_stream, seek_remain))
 }
