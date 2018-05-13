@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
+use std::slice;
 use types::{ContextX64, ContextX86, Directory, ExceptionRecord, ExceptionStream, Header,
             LocationDescriptor, MaybeThreadContext, MemoryInfo, Module, OverlayDescriptor, Thread};
 
@@ -35,6 +36,20 @@ fn seek_stream<'a>(
     take(seek_data, len).map(|(d, _)| (d, remain))
 }
 
+fn list_iter(
+    NumberOfEntries: u64,
+    SizeOfHeader: u64,
+    SizeOfEntry: u64,
+    data: ParseData,
+) -> slice::Chunks<u8> {
+    let offset = SizeOfHeader as usize;
+    let stride = SizeOfEntry as usize;
+    let len = (SizeOfHeader + SizeOfEntry * NumberOfEntries) as usize;
+
+    let body = &data[offset..len];
+    body.chunks(stride)
+}
+
 macro_rules! define_array_T {
     ($fn_name:ident, $type:ident, $reader_fn:expr) => {
         fn $fn_name<T>(data: ParseData, count: usize) -> ParseResult<Vec<T>>
@@ -47,9 +62,8 @@ macro_rules! define_array_T {
             let size = size_of::<$type>();
             let (raw, remain) = take(data, count * size)?;
 
-            for i in 0..count {
-                let ofs = i * size;
-                let val = $reader_fn(&raw[ofs..ofs + size]);
+            for raw_entry in raw.chunks(size) {
+                let val = $reader_fn(raw_entry);
                 v.push(T::from(val));
             }
 
@@ -203,9 +217,8 @@ pub fn parse_memory_info<'a>(
 
     let mut vec = Vec::new();
     vec.reserve(NumberOfEntries as usize);
-    for i in 0..NumberOfEntries {
-        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (entry, _) = memory_info(&raw[offset..])?;
+    for raw_entry in list_iter(NumberOfEntries, SizeOfHeader, SizeOfEntry, raw) {
+        let (entry, _) = memory_info(raw_entry)?;
         vec.push(entry);
     }
 
@@ -251,12 +264,11 @@ pub fn parse_string(data: ParseData, rva: u32) -> ParseResult<String> {
 
     let SizeOfHeader = 4;
     let SizeOfEntry = 2; // sizeof WCHAR
-    let Length = LittleEndian::read_u32(&raw[0..4]) / SizeOfEntry;
+    let Length = LittleEndian::read_u32(&raw[0..4]) as u64 / SizeOfEntry;
 
     let mut elems = Vec::new();
-    for i in 0..Length {
-        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let elem = LittleEndian::read_u16(&raw[offset..]);
+    for raw_entry in list_iter(Length, SizeOfHeader, SizeOfEntry, raw) {
+        let elem = LittleEndian::read_u16(raw_entry);
         elems.push(elem);
     }
     let string = String::from_utf16(&elems).map_err(|_| "bad UTF-16 data")?;
@@ -287,9 +299,8 @@ pub fn parse_module_list<'a>(
 
     let mut vec = Vec::new();
     vec.reserve(NumberOfModules as usize);
-    for i in 0..NumberOfModules {
-        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry, _) = module(&raw[offset..])?;
+    for raw_entry in list_iter(NumberOfModules, SizeOfHeader, SizeOfEntry, raw) {
+        let (mut entry, _) = module(raw_entry)?;
 
         // Look up name string
         if entry.ModuleNameRva > 0 {
@@ -343,9 +354,8 @@ pub fn parse_memory_list<'a>(
 
     let mut vec = Vec::new();
     vec.reserve(NumberOfMemoryRanges as usize);
-    for i in 0..NumberOfMemoryRanges {
-        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (entry, _) = memory_range(&raw[offset..])?;
+    for raw_entry in list_iter(NumberOfMemoryRanges, SizeOfHeader, SizeOfEntry, raw) {
+        let (entry, _) = memory_range(raw_entry)?;
 
         vec.push(entry);
     }
@@ -399,9 +409,8 @@ pub fn parse_memory64_list<'a>(
 
     let mut vec = Vec::new();
     vec.reserve(NumberOfMemoryRanges as usize);
-    for i in 0..NumberOfMemoryRanges {
-        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (entry, _) = memory_range64(&raw[offset..], BaseRva)?;
+    for raw_entry in list_iter(NumberOfMemoryRanges, SizeOfHeader, SizeOfEntry, raw) {
+        let (entry, _) = memory_range64(raw_entry, BaseRva)?;
 
         // Memory64 data is stored contiguously at end of file so RVA of a chunk
         // is BaseRva plus size of all chunks before.
@@ -618,9 +627,8 @@ pub fn parse_thread_list<'a>(
 
     let mut vec = Vec::new();
     vec.reserve(NumberOfThreads as usize);
-    for i in 0..NumberOfThreads {
-        let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
-        let (mut entry, _) = thread(&raw[offset..])?;
+    for raw_entry in list_iter(NumberOfThreads, SizeOfHeader, SizeOfEntry, raw) {
+        let (mut entry, _) = thread(raw_entry)?;
 
         let (context, _) = thread_context(data, &entry.ThreadContext)?;
         entry.Context = context;
