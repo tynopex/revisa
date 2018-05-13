@@ -590,6 +590,25 @@ pub fn parse_thread_context_x64<'a>(
     Ok((context, data))
 }
 
+fn thread_context<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, MaybeThreadContext> {
+    // Decode X86 CONTEXT
+    if loc.Length == 716 {
+        let (context, _) = parse_thread_context_x86(data, loc)?;
+        return Ok((MaybeThreadContext::X86(context), data));
+    }
+
+    // Decode X64 CONTEXT
+    if loc.Length == 1232 {
+        let (context, _) = parse_thread_context_x64(data, loc)?;
+        return Ok((MaybeThreadContext::X64(context), data));
+    }
+
+    Ok((MaybeThreadContext::None, data))
+}
+
 pub fn parse_thread_list<'a>(
     data: ParseData<'a>,
     loc: &LocationDescriptor,
@@ -622,17 +641,8 @@ pub fn parse_thread_list<'a>(
         let offset = (SizeOfHeader + i * SizeOfEntry) as usize;
         let (mut entry, _) = thread(&raw[offset..])?;
 
-        // Decode X86 CONTEXT
-        if entry.ThreadContext.Length == 716 {
-            let (context, _) = parse_thread_context_x86(&data, &entry.ThreadContext)?;
-            entry.Context = MaybeThreadContext::X86(context);
-        }
-
-        // Decode X64 CONTEXT
-        if entry.ThreadContext.Length == 1232 {
-            let (context, _) = parse_thread_context_x64(&data, &entry.ThreadContext)?;
-            entry.Context = MaybeThreadContext::X64(context);
-        }
+        let (context, _) = thread_context(data, &entry.ThreadContext)?;
+        entry.Context = context;
 
         vec.push(entry);
     }
