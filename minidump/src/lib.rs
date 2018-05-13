@@ -68,3 +68,24 @@ pub fn thread_list_json(dump: &[u8]) -> Vec<u8> {
 
     serde_json::to_vec(&threads).expect("Serializing failed")
 }
+
+// Find exception record and return as JSON
+pub fn exception_record_json(dump: &[u8]) -> Vec<u8> {
+    let header = parse::parse_header(&dump)
+        .map(|(h, _)| h)
+        .expect("Failed to parse minidump::Header");
+
+    let dir = parse::parse_directory(&dump, &header)
+        .map(|(d, _)| d)
+        .expect("Failed to parse minidump Directory list");
+
+    let stream = dir.iter()
+        .find(|&el| el.StreamType == StreamType::ExceptionStream as u32)
+        .expect("Unable to find exception record");
+
+    let record = parse::parse_exception_stream(dump, &stream.Location)
+        .map(|(v, _)| v)
+        .unwrap();
+
+    serde_json::to_vec(&record).expect("Serializing failed")
+}

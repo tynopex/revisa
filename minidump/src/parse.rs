@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 
 use byteorder::{ByteOrder, LittleEndian};
-use types::{ContextX64, ContextX86, Directory, Header, LocationDescriptor, MaybeThreadContext,
-            MemoryInfo, Module, OverlayDescriptor, Thread};
+use types::{ContextX64, ContextX86, Directory, ExceptionRecord, ExceptionStream, Header,
+            LocationDescriptor, MaybeThreadContext, MemoryInfo, Module, OverlayDescriptor, Thread};
 
 pub type ParseData<'a> = &'a [u8];
 pub type ParseResult<'a, T> = Result<(T, &'a [u8]), &'static str>;
@@ -648,4 +648,118 @@ pub fn parse_thread_list<'a>(
     }
 
     Ok((vec, data))
+}
+
+fn exception_record_32(data: ParseData) -> ParseResult<ExceptionRecord> {
+    /* struct EXCEPTION_RECORD32 {
+        DWORD       ExceptionCode;
+        DWORD       ExceptionFlags;
+        DWORD       ExceptionRecord;
+        DWORD       ExceptionAddress;
+        DWORD       NumberParameters;
+        DWORD       ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
+    } */
+
+    let (raw, remain) = take(data, 96)?;
+
+    let ExceptionRecord = LittleEndian::read_u32(&raw[8..12]);
+    if ExceptionRecord != 0 {
+        return Err("Unexpected exception chain");
+    }
+
+    let NumberParameters = LittleEndian::read_u32(&raw[16..20]) as usize;
+    if NumberParameters > 15 {
+        return Err("Invalid number of exception parameters");
+    }
+
+    let (Information, _) = array_u32(&raw[20..], NumberParameters)?;
+
+    let rec = ExceptionRecord {
+        Code: LittleEndian::read_u32(&raw[0..4]),
+        Flags: LittleEndian::read_u32(&raw[4..8]),
+        Address: LittleEndian::read_u32(&raw[12..16]) as u64,
+        Information: Information,
+    };
+
+    Ok((rec, remain))
+}
+
+fn exception_record_64(data: ParseData) -> ParseResult<ExceptionRecord> {
+    /* struct EXCEPTION_RECORD64 {
+        DWORD       ExceptionCode;
+        DWORD       ExceptionFlags;
+        DWORD64     ExceptionRecord;
+        DWORD64     ExceptionAddress;
+        DWORD       NumberParameters;
+        DWORD       __unusedAlignment;
+        DWORD64     ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
+    } */
+
+    let (raw, remain) = take(data, 160)?;
+
+    let ExceptionRecord = LittleEndian::read_u64(&raw[8..16]);
+    if ExceptionRecord != 0 {
+        return Err("Unexpected exception chain");
+    }
+
+    let NumberParameters = LittleEndian::read_u32(&raw[24..28]) as usize;
+    if NumberParameters > 15 {
+        return Err("Invalid number of exception parameters");
+    }
+
+    let (Information, _) = array_u64(&raw[32..], NumberParameters)?;
+
+    let rec = ExceptionRecord {
+        Code: LittleEndian::read_u32(&raw[0..4]),
+        Flags: LittleEndian::read_u32(&raw[4..8]),
+        Address: LittleEndian::read_u64(&raw[16..24]),
+        Information: Information,
+    };
+
+    Ok((rec, remain))
+}
+
+pub fn parse_exception_stream<'a>(
+    data: ParseData<'a>,
+    loc: &LocationDescriptor,
+) -> ParseResult<'a, ExceptionStream> {
+    /* struct MINIDUMP_EXCEPTION_STREAM {
+        ULONG32                         ThreadId;
+        ULONG32                         __alignment;
+        MINIDUMP_EXCEPTION              ExceptionRecord;
+        MINIDUMP_LOCATION_DESCRIPTOR    ThreadContext;
+    } */
+
+    let offset = loc.Offset as usize;
+    if offset > data.len() {
+        return Err("Cannot seek to Stream");
+    }
+    let raw = &data[offset..];
+
+    let SizeOfHeader32 = 104;
+    let SizeOfHeader64 = 168;
+    if SizeOfHeader32 != loc.Length && SizeOfHeader64 != loc.Length {
+        return Err("Unexpected Stream size");
+    }
+
+    // Use length of stream to guess format
+    let exception_record_fn = if SizeOfHeader32 == loc.Length {
+        exception_record_32
+    } else {
+        exception_record_64
+    };
+
+    let (exception_record, remain) = exception_record_fn(&raw[8..])?;
+    let (loc, _) = location(remain)?;
+    let (context, _) = thread_context(data, &loc)?;
+
+    let exception_stream = ExceptionStream {
+        ThreadId: LittleEndian::read_u32(&raw[0..4]),
+        Exception: exception_record,
+        ThreadContext: loc,
+
+        Context: context,
+    };
+
+    Ok((exception_stream, data))
 }

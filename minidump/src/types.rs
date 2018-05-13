@@ -127,3 +127,20 @@ pub struct Thread {
 
     pub Context: MaybeThreadContext,
 }
+
+#[derive(Serialize)]
+pub struct ExceptionRecord {
+    pub Code: u32,
+    pub Flags: u32,
+    pub Address: u64,
+    pub Information: Vec<u64>,
+}
+
+#[derive(Serialize)]
+pub struct ExceptionStream {
+    pub ThreadId: u32,
+    pub Exception: ExceptionRecord,
+    pub ThreadContext: LocationDescriptor,
+
+    pub Context: MaybeThreadContext,
+}
