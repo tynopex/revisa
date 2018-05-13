@@ -596,14 +596,14 @@ fn thread_context<'a>(
 ) -> ParseResult<'a, MaybeThreadContext> {
     // Decode X86 CONTEXT
     if loc.Length == 716 {
-        let (context, _) = parse_thread_context_x86(data, loc)?;
-        return Ok((MaybeThreadContext::X86(context), data));
+        let (context, remain) = parse_thread_context_x86(data, loc)?;
+        return Ok((MaybeThreadContext::X86(context), remain));
     }
 
     // Decode X64 CONTEXT
     if loc.Length == 1232 {
-        let (context, _) = parse_thread_context_x64(data, loc)?;
-        return Ok((MaybeThreadContext::X64(context), data));
+        let (context, remain) = parse_thread_context_x64(data, loc)?;
+        return Ok((MaybeThreadContext::X64(context), remain));
     }
 
     Ok((MaybeThreadContext::None, data))
@@ -660,7 +660,7 @@ fn exception_record_32(data: ParseData) -> ParseResult<ExceptionRecord> {
         DWORD       ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
     } */
 
-    let (raw, remain) = take(data, 96)?;
+    let (raw, remain) = take(data, 80)?;
 
     let ExceptionRecord = LittleEndian::read_u32(&raw[8..12]);
     if ExceptionRecord != 0 {
@@ -695,7 +695,7 @@ fn exception_record_64(data: ParseData) -> ParseResult<ExceptionRecord> {
         DWORD64     ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
     } */
 
-    let (raw, remain) = take(data, 160)?;
+    let (raw, remain) = take(data, 152)?;
 
     let ExceptionRecord = LittleEndian::read_u64(&raw[8..16]);
     if ExceptionRecord != 0 {
@@ -750,13 +750,14 @@ pub fn parse_exception_stream<'a>(
     };
 
     let (exception_record, remain) = exception_record_fn(&raw[8..])?;
-    let (loc, _) = location(remain)?;
-    let (context, _) = thread_context(data, &loc)?;
+    let (context_loc, _) = location(remain)?;
+
+    let (context, _) = thread_context(data, &context_loc)?;
 
     let exception_stream = ExceptionStream {
         ThreadId: LittleEndian::read_u32(&raw[0..4]),
         Exception: exception_record,
-        ThreadContext: loc,
+        ThreadContext: context_loc,
 
         Context: context,
     };
