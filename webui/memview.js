@@ -87,10 +87,11 @@ class MemoryViewer {
         this.model = new MemoryData(this.control, this.nrow);
         this.model.set_address(0);
 
-        // Set address to fault address on minidump load
+        // Set address near fault address on minidump load
         this.control.subscribe("minidump", (raw, result) => {
             let exception_record = JSON.parse(result.exception_record);
             let fault_addr = exception_record.Exception.Address;
+            fault_addr = fault_addr - (fault_addr & 0xF);
             this.model.set_address(fault_addr, this.nrow / 2);
         });
     }
