@@ -73,6 +73,11 @@ class MinidumpProcessor {
         return this.wasm_to_json(res);
     }
 
+    wasm_system_info(wasm_buf) {
+        let res = wasm.exports.minidump_system_info(wasm_buf);
+        return this.wasm_to_json(res);
+    }
+
     process(data) {
         // Copy minidump to WASM memory
         let wasm_buf = this.data_to_wasm(data);
@@ -86,6 +91,7 @@ class MinidumpProcessor {
             'memory_range': this.wasm_memory_overlay(wasm_buf),
             'thread_list': this.wasm_thread_list(wasm_buf),
             'exception_record': this.wasm_exception_record(wasm_buf),
+            'system_info': this.wasm_system_info(wasm_buf),
         };
 
         // Release WASM memory

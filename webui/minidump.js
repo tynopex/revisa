@@ -239,6 +239,32 @@ class MinidumpViewer {
         dom.append("Exception Record:", list);
     }
 
+    render_system_info(item, dom) {
+        let list = document.createElement('ul');
+
+        let arch = item.ProcessorArchitecture;
+             if (arch == 0x0000) arch = "X86";
+        else if (arch == 0x0005) arch = "ARM";
+        else if (arch == 0x0009) arch = "AMD64";
+        else if (arch == 0x8003) arch = "ARM64"; // Breakpad-defined
+
+        let props = [
+            ["Processor Architecture", arch],
+            ["Processor Family", item.ProcessorFamily],
+            ["Processor Model", item.ProcessorModel],
+            ["Processor Stepping", item.ProcessorStepping],
+            ["Processor Count", item.NumberOfProcessors],
+        ];
+
+        for (let [disp, val] of props) {
+            let li = document.createElement('li');
+            li.append(disp, ": ", val.toString());
+            list.append(li);
+        }
+
+        dom.append("System Information:", list);
+    }
+
     show_result(result) {
         this.body.innerHTML = "";
 
@@ -256,7 +282,11 @@ class MinidumpViewer {
         let exception_record = JSON.parse(result.exception_record);
         this.render_exception_record(exception_record, exception_dom);
 
-        list.append(li_sig, li_size, exception_dom);
+        let sysinfo_dom = document.createElement('li');
+        let system_info = JSON.parse(result.system_info);
+        this.render_system_info(system_info, sysinfo_dom);
+
+        list.append(li_sig, li_size, sysinfo_dom, exception_dom);
         this.body.append(list);
 
         head = document.createElement('h1');

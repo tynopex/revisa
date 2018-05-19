@@ -58,3 +58,11 @@ pub unsafe fn minidump_exception_record(raw: *mut WasmBuffer) -> *mut WasmBuffer
     let boxed = Box::new(json);
     Box::into_raw(boxed)
 }
+
+// Find system info record in a minidump
+#[no_mangle]
+pub unsafe fn minidump_system_info(raw: *mut WasmBuffer) -> *mut WasmBuffer {
+    let json = minidump::system_info_json(&*raw);
+    let boxed = Box::new(json);
+    Box::into_raw(boxed)
+}
