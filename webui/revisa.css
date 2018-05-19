@@ -60,3 +60,16 @@
 #revisa .minidump .threads {
     font-family: monospace;
 }
+
+#revisa .memview {
+    font-family: monospace;
+}
+
+#revisa .memview .addr {
+    background-color: #DFD;
+}
+
+#revisa .memview .data {
+    margin-left: 10px;
+    background-color: #EEE;
+}

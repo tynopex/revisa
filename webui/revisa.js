@@ -9,16 +9,30 @@ class Revisa {
         this.view = new ViewLayout(this);
 
         this.minidump = new MinidumpViewer(this);
+        this.memview = new MemoryViewer(this);
 
         let view = window.location.hash;
         this.select_view(view);
     }
 
     select_view(view) {
-        if (view && view != "#minidump")
-            throw new Error("Unexpected view");
+        // Default view
+        if (!view) {
+            this.view.memory_view(this.memview);
+            return;
+        }
 
-        this.view.minidump_view(this.minidump);
+        if (view == "#minidump") {
+            this.view.minidump_view(this.minidump);
+            return;
+        }
+
+        if (view == "#memview") {
+            this.view.memory_view(this.memview);
+            return;
+        }
+
+        throw new Error("Unexpected view");
     }
 }
 
@@ -72,6 +86,14 @@ class ViewLayout {
         this.render_breadcrumb();
 
         minidump.bind(this.body);
+    }
+
+    memory_view(memview) {
+        this.breadcrumb.length = 1;
+        this.breadcrumb.push("Memory Viewer");
+        this.render_breadcrumb();
+
+        memview.bind(this.body);
     }
 }
 
