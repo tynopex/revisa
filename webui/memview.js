@@ -9,34 +9,24 @@ class MemoryRow {
 
 // The data accessor model
 class MemoryData {
-    constructor(nrow = 10) {
+    constructor(control, nrow = 10) {
+        this.control = control;
         this.address = 0x0;
         this.limit = 0x1000000000000;
         this.stride = 16;
         this.nrow = nrow;
-        this.observers = {};
-    }
+        this.dumpfile = null;
 
-    subscribe(topic, cb) {
-        topic = topic.toString();
+        this.control.subscribe("minidump", (raw, result) => {
+            this.dumpfile = new Uint8Array(raw);
 
-        if (!this.observers[topic]) {
-            this.observers[topic] = [];
-        }
+            // Sorted from highest start address to lowest
+            this.ranges = JSON.parse(result.memory_range);
+            this.ranges.sort((l,r) => (l.Address - r.Address));
+            this.ranges.reverse();
 
-        this.observers[topic].push(cb);
-    }
-
-    publish(topic, ...args) {
-        topic = topic.toString();
-
-        let listeners = this.observers[topic];
-
-        if (listeners) {
-            for (let cb of listeners) {
-                cb(...args);
-            }
-        }
+            this.control.publish("data_change");
+        });
     }
 
     set_address(addr, row = 0) {
@@ -50,14 +40,39 @@ class MemoryData {
             this.address = this.limit - (this.nrow * this.stride);
         }
 
-        this.publish("address", this.address);
+        this.control.publish("memory_address", this.address);
+    }
+
+    get_byte(addr) {
+        if (!this.dumpfile) {
+            return "??";
+        }
+
+        // Find first range who's start address is smaller than target
+        let range = this.ranges.find(el => el.Address <= addr);
+        if (!range) {
+            return "??";
+        }
+
+        // Check bounds of the region
+        let offset = addr - range.Address;
+        if (offset >= range.Location.Length) {
+            return "??";
+        }
+
+        // Read byte out of file
+        return this.dumpfile[range.Location.Offset + offset];
     }
 
     get_row(idx) {
         let offset = idx * this.stride;
 
         let row_address = this.address + offset;
-        let row_data = new Uint8Array(this.stride);
+        let row_data = new Array(this.stride);
+
+        for (let i = 0; i < this.stride; i += 1) {
+            row_data[i] = this.get_byte(row_address + i);
+        }
 
         return new MemoryRow(row_address, row_data);
     }
@@ -69,8 +84,19 @@ class MemoryViewer {
 
         this.nrow = 20;
 
-        this.model = new MemoryData(this.nrow);
+        this.model = new MemoryData(this.control, this.nrow);
         this.model.set_address(0);
+
+        // Set address to fault address on minidump load
+        this.control.subscribe("minidump", (raw, result) => {
+            let exception_record = JSON.parse(result.exception_record);
+            let fault_addr = exception_record.Exception.Address;
+            this.model.set_address(fault_addr, this.nrow / 2);
+        });
+    }
+
+    set_data_source(source) {
+        this.data_source = source;
     }
 
     bind(elem) {
@@ -133,7 +159,8 @@ class MemoryViewer {
             dom_addr.addEventListener('blur', _ => {
                 update_fn();
             });
-            this.model.subscribe("address", update_fn);
+            this.control.subscribe("memory_address", update_fn);
+            this.control.subscribe("data_change", update_fn);
             update_fn();
 
             dom_data.className = "data";

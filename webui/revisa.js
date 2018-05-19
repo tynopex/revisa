@@ -3,6 +3,7 @@
 class Revisa {
     constructor(elem) {
         this.dom = elem;
+        this.observers = {};
     }
 
     start() {
@@ -28,6 +29,28 @@ class Revisa {
         }
 
         throw new Error("Unexpected view");
+    }
+
+    subscribe(topic, cb) {
+        topic = topic.toString();
+
+        if (!this.observers[topic]) {
+            this.observers[topic] = [];
+        }
+
+        this.observers[topic].push(cb);
+    }
+
+    publish(topic, ...args) {
+        topic = topic.toString();
+
+        let listeners = this.observers[topic];
+
+        if (listeners) {
+            for (let cb of listeners) {
+                cb(...args);
+            }
+        }
     }
 }
 

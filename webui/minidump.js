@@ -85,6 +85,10 @@ class MinidumpViewer {
 
         this.body = document.createElement('div');
         this.dom.appendChild(this.body);
+
+        this.control.subscribe("minidump", (raw, result) => {
+            this.show_result(result);
+        });
     }
 
     load_minidump(files) {
@@ -93,10 +97,13 @@ class MinidumpViewer {
         let reader = new FileReader();
         reader.onload = function(e) {
             let data = this.result;
+
+            self.dumpfile = data;
+
             self.worker.postMessage({
                 'topic': 'file',
                 'data': data,
-                }, [data]);
+                });
         }
         reader.readAsArrayBuffer(file);
     }
@@ -260,7 +267,7 @@ class MinidumpViewer {
 
     onmessage(e) {
         if (e.data.topic == 'result') {
-            this.show_result(e.data);
+            this.control.publish("minidump", this.dumpfile, e.data);
         }
     }
 }
