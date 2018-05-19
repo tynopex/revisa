@@ -18,17 +18,12 @@ class Revisa {
     select_view(view) {
         // Default view
         if (!view) {
-            this.view.memory_view(this.memview);
+            this.view.minidump_view(this.minidump, this.memview);
             return;
         }
 
         if (view == "#minidump") {
-            this.view.minidump_view(this.minidump);
-            return;
-        }
-
-        if (view == "#memview") {
-            this.view.memory_view(this.memview);
+            this.view.minidump_view(this.minidump, this.memview);
             return;
         }
 
@@ -80,20 +75,18 @@ class ViewLayout {
         this.body = document.createElement('div');
     }
 
-    minidump_view(minidump) {
+    minidump_view(minidump, memview) {
         this.breadcrumb.length = 1;
         this.breadcrumb.push("Minidump Viewer");
         this.render_breadcrumb();
 
-        minidump.bind(this.body);
-    }
+        let dom_memview = document.createElement('div');
+        memview.bind(dom_memview);
 
-    memory_view(memview) {
-        this.breadcrumb.length = 1;
-        this.breadcrumb.push("Memory Viewer");
-        this.render_breadcrumb();
+        let dom_minidump = document.createElement('div');
+        minidump.bind(dom_minidump);
 
-        memview.bind(this.body);
+        this.body.append(dom_memview, dom_minidump);
     }
 }
 
