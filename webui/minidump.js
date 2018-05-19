@@ -228,29 +228,36 @@ class MinidumpViewer {
     render_exception_record(item, dom) {
         let addr = item.Exception.Address;
 
-        let elem = document.createElement('div');
-        elem.append("Exception Record:");
-        elem.append(" Thread[" + item.ThreadId.toString() + "]");
-        elem.append(" FaultAddress[" + addr.toString(16).padStart(12, '0') + "]");
+        let list = document.createElement('ul');
+        let li_thread = document.createElement('li');
+        let li_fault = document.createElement('li');
 
-        dom.appendChild(elem);
+        li_thread.append("Thread[" + item.ThreadId.toString() + "]");
+        li_fault.append("FaultAddress[" + addr.toString(16).padStart(12, '0') + "]");
+
+        list.append(li_thread, li_fault);
+        dom.append("Exception Record:", list);
     }
 
     show_result(result) {
+        this.body.innerHTML = "";
+
         let head = document.createElement('h1');
         head.textContent = "Minidump";
-
-        this.body.innerHTML = "";
         this.body.append(head);
-        this.body.append("Header Signature: " + result.magic);
-        this.body.append(document.createElement('br'));
-        this.body.append("Data Size: " + result.bytelen);
 
-        let exception_dom = document.createElement('div');
-        exception_dom.className = "exception";
+        let list = document.createElement('ul');
+        let li_sig = document.createElement('li');
+        let li_size = document.createElement('li');
+        li_sig.append("Header Signature: " + result.magic);
+        li_size.append("Data Size: " + result.bytelen);
+
+        let exception_dom = document.createElement('li');
         let exception_record = JSON.parse(result.exception_record);
         this.render_exception_record(exception_record, exception_dom);
-        this.body.append(exception_dom);
+
+        list.append(li_sig, li_size, exception_dom);
+        this.body.append(list);
 
         head = document.createElement('h1');
         head.textContent = "Thread List";

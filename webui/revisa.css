@@ -7,6 +7,10 @@
     margin: 0px;
 }
 
+#revisa .minidump ul ul {
+    font-family: monospace;
+}
+
 #revisa .minidump .meminfo {
     width: 80%;
     font-family: monospace;
