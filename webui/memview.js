@@ -78,7 +78,7 @@ class MemoryViewer {
         this.dom.innerHTML = "";
         this.dom.className = 'memview';
 
-        this.body = document.createElement('div');
+        this.body = document.createElement('table');
         this.build_rows(this.body, this.nrow);
         this.dom.appendChild(this.body);
     }
@@ -93,7 +93,9 @@ class MemoryViewer {
         dom.innerHTML = "";
 
         for (let i = 0; i < nrow; i += 1) {
-            let dom_row = document.createElement('div');
+            let dom_row = document.createElement('tr');
+            let dom_addr_cell = document.createElement('td');
+            let dom_data_cell = document.createElement('td');
             let dom_addr = document.createElement('input');
             let dom_data = document.createElement('span');
 
@@ -136,7 +138,9 @@ class MemoryViewer {
 
             dom_data.className = "data";
 
-            dom_row.append(dom_addr, dom_data);
+            dom_addr_cell.append(dom_addr);
+            dom_data_cell.append(dom_data);
+            dom_row.append(dom_addr_cell, dom_data_cell);
             dom.append(dom_row);
         }
     }
