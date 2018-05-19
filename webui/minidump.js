@@ -194,10 +194,13 @@ class MinidumpViewer {
         ranges.sort((l,r) => (l.Address - r.Address));
 
         for (let item of ranges) {
+            let start = item.Address;
+            let last = item.Address + item.Location.Length - 1;
+
             let elem = document.createElement('li');
-            elem.append('\u00A0\u00A0');
-            elem.append(item.Address.toString(16).padStart(12, '0'));
-            elem.append(" " + item.Location.Length.toString().padStart(8, '\u00A0'));
+            elem.append(start.toString(16).padStart(12, '0'),
+                        " - ",
+                        last.toString(16).padStart(12, '0'));
 
             list.appendChild(elem);
         }
@@ -214,9 +217,8 @@ class MinidumpViewer {
                                                 : item.Context.Rip;
 
             let elem = document.createElement('li');
-            elem.append('\u00A0\u00A0');
             elem.append("Thread[" + item.ThreadId.toString().padStart(5, '\u00A0') + "]");
-            elem.append(" " + pc.toString(16).padStart(12, '0'));
+            elem.append(" IP[" + pc.toString(16).padStart(12, '0') + "]");
 
             list.appendChild(elem);
         }
@@ -227,7 +229,7 @@ class MinidumpViewer {
         let addr = item.Exception.Address;
 
         let elem = document.createElement('div');
-        elem.append("ExceptionRecord:");
+        elem.append("Exception Record:");
         elem.append(" Thread[" + item.ThreadId.toString() + "]");
         elem.append(" FaultAddress[" + addr.toString(16).padStart(12, '0') + "]");
 
