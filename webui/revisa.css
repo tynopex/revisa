@@ -63,9 +63,15 @@
 
 #revisa .memview {
     font-family: monospace;
+    font-size: 16px;
 }
 
 #revisa .memview .addr {
+    font: inherit;
+    width: 12ch;
+    text-align: right;
+    padding: 0px;
+    border-style: none;
     background-color: #DFD;
 }
 
