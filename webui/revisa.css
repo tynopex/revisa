@@ -61,12 +61,8 @@
     font-family: monospace;
 }
 
-#revisa .memview {
-    font-family: monospace;
-    font-size: 16px;
-}
-
 #revisa .memview table {
+    font-family: monospace;
     border-collapse: separate;
     border-spacing: 10px 0px;
     margin: 10px 0px;
@@ -76,7 +72,7 @@
     padding: 0px;
 }
 
-#revisa .memview .addr {
+#revisa .memview input.addr {
     font: inherit;
     width: 12ch;
     text-align: right;
@@ -85,7 +81,7 @@
     background-color: #DFD;
 }
 
-#revisa .memview .addr:focus {
+#revisa .memview input.addr:focus {
     background-color: #EFE;
 }
 
