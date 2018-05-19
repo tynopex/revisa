@@ -237,34 +237,44 @@ class MinidumpViewer {
     }
 
     show_result(result) {
+        let head = document.createElement('h1');
+        head.textContent = "Minidump";
+
         this.body.innerHTML = "";
+        this.body.append(head);
         this.body.append("Header Signature: " + result.magic);
         this.body.append(document.createElement('br'));
         this.body.append("Data Size: " + result.bytelen);
 
-        let mem_dom = document.createElement('div');
-        mem_dom.className = "meminfo";
-        let mem_info = JSON.parse(result.memory_info);
-        this.render_memory(mem_info, mem_dom);
-        this.body.append(mem_dom);
+        let exception_dom = document.createElement('div');
+        exception_dom.className = "exception";
+        let exception_record = JSON.parse(result.exception_record);
+        this.render_exception_record(exception_record, exception_dom);
+        this.body.append(exception_dom);
 
-        let memdata_dom = document.createElement('div');
-        memdata_dom.className = "memdata";
-        let mem_range = JSON.parse(result.memory_range);
-        this.render_memory_range(mem_range, memdata_dom);
-        this.body.append(memdata_dom);
-
+        head = document.createElement('h1');
+        head.textContent = "Thread List";
         let threads_dom = document.createElement('div');
         threads_dom.className = "threads";
         let thread_list = JSON.parse(result.thread_list);
         this.render_thread_list(thread_list, threads_dom);
-        this.body.append(threads_dom);
+        this.body.append(head, threads_dom);
 
-        let exception_dom = document.createElement('div');
-        exception_dom.className = "threads";
-        let exception_record = JSON.parse(result.exception_record);
-        this.render_exception_record(exception_record, exception_dom);
-        this.body.append(exception_dom);
+        head = document.createElement('h1');
+        head.textContent = "Memory Dump Ranges";
+        let memdata_dom = document.createElement('div');
+        memdata_dom.className = "memdata";
+        let mem_range = JSON.parse(result.memory_range);
+        this.render_memory_range(mem_range, memdata_dom);
+        this.body.append(head, memdata_dom);
+
+        head = document.createElement('h1');
+        head.textContent = "Memory Map";
+        let mem_dom = document.createElement('div');
+        mem_dom.className = "meminfo";
+        let mem_info = JSON.parse(result.memory_info);
+        this.render_memory(mem_info, mem_dom);
+        this.body.append(head, mem_dom);
     }
 
     onmessage(e) {
