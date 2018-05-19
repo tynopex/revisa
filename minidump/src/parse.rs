@@ -111,6 +111,22 @@ pub fn parse_header(data: ParseData) -> ParseResult<Header> {
     Ok((header, remain))
 }
 
+fn address64(data: ParseData) -> ParseResult<u64> {
+    let (raw, remain) = take(data, 8)?;
+
+    let mut addr = LittleEndian::read_u64(raw);
+
+    // On some platforms, a 32-bit address may be sign extended when stored in
+    // minidump. We detect this case and truncate back to 32-bits. Note that
+    // 64-bit platforms do not use the full address range and are unaffected by
+    // this truncation.
+    if (addr as i64) < 0 {
+        addr = addr as u32 as u64;
+    }
+
+    Ok((addr, remain))
+}
+
 fn location(data: ParseData) -> ParseResult<LocationDescriptor> {
     /* struct MINIDUMP_LOCATION_DESCRIPTOR {
         ULONG32     DataSize;
@@ -162,9 +178,12 @@ fn memory_info(data: ParseData) -> ParseResult<MemoryInfo> {
 
     let (raw, remain) = take(data, 48)?;
 
+    let (BaseAddress, _) = address64(&raw[0..8])?;
+    let (AllocationBase, _) = address64(&raw[8..16])?;
+
     let mem_info = MemoryInfo {
-        BaseAddress: LittleEndian::read_u64(&raw[0..8]),
-        AllocationBase: LittleEndian::read_u64(&raw[8..16]),
+        BaseAddress: BaseAddress,
+        AllocationBase: AllocationBase,
         AllocationProtect: LittleEndian::read_u32(&raw[16..20]),
         RegionSize: LittleEndian::read_u64(&raw[24..32]),
         State: LittleEndian::read_u32(&raw[32..36]),
@@ -242,8 +261,10 @@ fn module(data: ParseData) -> ParseResult<Module> {
 
     let (raw, remain) = take(data, 108)?;
 
+    let (BaseOfImage, _) = address64(&raw[0..8])?;
+
     let module = Module {
-        BaseOfImage: LittleEndian::read_u64(&raw[0..8]),
+        BaseOfImage: BaseOfImage,
         SizeOfImage: LittleEndian::read_u32(&raw[8..12]),
         CheckSum: LittleEndian::read_u32(&raw[12..16]),
         TimeDateStamp: LittleEndian::read_u32(&raw[16..20]),
@@ -324,8 +345,10 @@ fn memory_range(data: ParseData) -> ParseResult<OverlayDescriptor> {
     let (raw, remain) = take(data, 8)?;
     let (loc, remain) = location(remain)?;
 
+    let (Address, _) = address64(&raw[0..8])?;
+
     let range = OverlayDescriptor {
-        Address: LittleEndian::read_u64(&raw[0..8]),
+        Address: Address,
         Location: loc,
     };
 
@@ -438,12 +461,14 @@ fn thread(data: ParseData) -> ParseResult<Thread> {
     let (stack, remain) = memory_range(remain)?;
     let (context, remain) = location(remain)?;
 
+    let (Teb, _) = address64(&raw[16..24])?;
+
     let thread = Thread {
         ThreadId: LittleEndian::read_u32(&raw[0..4]),
         SuspendCount: LittleEndian::read_u32(&raw[4..8]),
         PriorityClass: LittleEndian::read_u32(&raw[8..12]),
         Priority: LittleEndian::read_u32(&raw[12..16]),
-        Teb: LittleEndian::read_u64(&raw[16..24]),
+        Teb: Teb,
         Stack: stack,
         ThreadContext: context,
 
