@@ -75,6 +75,10 @@
     background-color: #DFD;
 }
 
+#revisa .memview .addr:focus {
+    background-color: #EFE;
+}
+
 #revisa .memview .data {
     margin-left: 10px;
     background-color: #EEE;
