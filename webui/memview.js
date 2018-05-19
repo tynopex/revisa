@@ -99,20 +99,16 @@ class MemoryViewer {
 
             dom_row.row = i;
 
-            dom_addr.className = "addr";
-            dom_addr.type = 'text';
-            dom_addr.addEventListener('change', ev => {
-                this.set_address(ev.target.value, i);
-            });
-
-            dom_data.className = "data";
-
             let update_fn = _ => {
                 let row = this.model.get_row(i);
 
                 let addr_fmt = row.address.toString(16)
-                                          .toUpperCase()
-                                          .padStart(12, '0');
+                                          .toUpperCase();
+
+                // Zero-pad addresses unless they are focused
+                if (document.activeElement !== dom_addr) {
+                    addr_fmt = addr_fmt.padStart(12, '0');
+                }
 
                 let data_fmt = Array.from(row.rawdata)
                                     .map(x => x.toString(16)
@@ -124,9 +120,21 @@ class MemoryViewer {
                 dom_data.textContent = data_fmt;
             };
 
+            dom_addr.className = "addr";
+            dom_addr.type = 'text';
+            dom_addr.addEventListener('change', ev => {
+                this.set_address(ev.target.value, i);
+            });
+            dom_addr.addEventListener('focus', _ => {
+                update_fn();
+            });
+            dom_addr.addEventListener('blur', _ => {
+                update_fn();
+            });
             this.model.subscribe("address", update_fn);
-
             update_fn();
+
+            dom_data.className = "data";
 
             dom_row.append(dom_addr, dom_data);
             dom.append(dom_row);
