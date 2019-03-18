@@ -246,6 +246,7 @@ class MinidumpViewer {
              if (arch == 0x0000) arch = "X86";
         else if (arch == 0x0005) arch = "ARM";
         else if (arch == 0x0009) arch = "AMD64";
+        else if (arch == 0x000C) arch = "ARM64";
         else if (arch == 0x8003) arch = "ARM64"; // Breakpad-defined
 
         let props = [
