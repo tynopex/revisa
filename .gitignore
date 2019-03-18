@@ -2,5 +2,4 @@
 Cargo.lock
 target/
 *.dmp
-*.wasm
 NOTES
